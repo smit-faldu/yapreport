@@ -1,0 +1,26 @@
+# Environments
+.venv/
+venv/
+env/
+
+# Byte-compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Generated output files (prevent them from bloating the image)
+todays_script.json
+todays_podcast.wav
+temp_podcast_1_2x.wav
+final_short.mp4
+*_silent.mp4
+captions.ass
+
+# Model Caches (Do not copy local models into the image)
+.cache/
+models/
+
+# IDEs & OS
+.vscode/
+.idea/
+.DS_Store

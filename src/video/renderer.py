@@ -135,7 +135,7 @@ def compile_video(timeline, duration, bg_video_path=None, audio_path=None, outpu
         "-map", "[outv]",
         "-map", "1:a",           # only take podcast audio, drop BG noise
         "-t", str(duration),     # Stop when the podcast stops
-        "-c:v", "libx264", "-preset", "veryfast", "-crf", "18",
+        "-c:v", "h264_nvenc", "-preset", "fast", "-crf", "18",
         "-c:a", "aac", "-b:a", "192k",
         "-hide_banner", "-loglevel", "warning",
         output_path
