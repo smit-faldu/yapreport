@@ -4,6 +4,7 @@ venv/
 env/
 .env
 
+assets/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -19,4 +20,3 @@ final_short.mp4
 .vscode/
 .idea/
 .DS_Store
-assets/

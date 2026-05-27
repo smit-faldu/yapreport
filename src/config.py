@@ -28,6 +28,10 @@ TRUMP_IMG     = os.path.join(BASE_DIR, "assets", "trump.png")
 ELON_IMG      = os.path.join(BASE_DIR, "assets", "elon.png")
 OUTPUT_VIDEO_PATH = "final_short.mp4"
 
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
+SUPABASE_BUCKET = os.environ.get("SUPABASE_BUCKET", "videos")
+
 # Canvas
 W, H = 1080, 1920
 FPS  = 30

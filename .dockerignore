@@ -1,0 +1,32 @@
+# --- Virtual Environments (Crucial for Docker) ---
+venv/
+.venv/
+env/
+.env/
+
+# --- Environment Variables (Security) ---
+# Prevents your local .env file (with GOOGLE_API_KEY) from being baked into the image
+.env
+
+# --- Python Cache ---
+__pycache__/
+*.py[cod]
+*$py.class
+
+# --- Git ---
+.git/
+.gitignore
+
+# --- IDEs & OS Files ---
+.vscode/
+.idea/
+.DS_Store
+
+# --- App-Specific Output & Assets ---
+# Prevents locally generated heavy media files from bloating the Docker context
+todays_script.json
+todays_podcast.wav
+temp_podcast_1_2x.wav
+final_short.mp4
+*_silent.mp4
+assets/

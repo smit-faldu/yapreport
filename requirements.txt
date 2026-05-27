@@ -21,3 +21,4 @@ opencv-python
 fastapi
 uvicorn
 python-dotenv
+supabase
