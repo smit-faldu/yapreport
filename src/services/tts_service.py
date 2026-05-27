@@ -16,10 +16,19 @@ def load_tts_model():
     Load OmniVoice model ONCE and reuse it for all lines.
     """
     print("🔊 Loading OmniVoice TTS model...")
+    if torch.cuda.is_available():
+        print("💡 CUDA detected. Loading OmniVoice in FP16 on GPU...")
+        device_map = "cuda:0"
+        dtype = torch.float16
+    else:
+        print("⚠️ CUDA not available. Loading OmniVoice in FP32 on CPU (slow)...")
+        device_map = "cpu"
+        dtype = torch.float32
+
     model = OmniVoice.from_pretrained(
         "k2-fsa/OmniVoice",
-        device_map="cuda:0",
-        dtype=torch.float16
+        device_map=device_map,
+        dtype=dtype
     )
     print("✅ TTS model loaded.\n")
     return model
@@ -52,11 +61,12 @@ def run_tts_pipeline(script: Script):
 
         try:
             # OmniVoice generation
-            audio_segments = model.generate(
-                text=text,
-                ref_audio=ref_audio,
-                ref_text=ref_text,
-            )
+            with torch.inference_mode():
+                audio_segments = model.generate(
+                    text=text,
+                    ref_audio=ref_audio,
+                    ref_text=ref_text,
+                )
         except Exception as e:
             print(f"  ❌ TTS failed for line {idx+1}: {e}")
             continue

@@ -12,13 +12,15 @@ def transcribe(audio_path, dialogue):
     device = "cuda" if torch.cuda.is_available() else "cpu"
     compute_type = "float16" if device == "cuda" else "int8"
     
-    model = whisperx.load_model(WHISPER_MODEL, device, compute_type=compute_type)
-    audio = whisperx.load_audio(audio_path)
-    result = model.transcribe(audio, batch_size=8)
+    with torch.inference_mode():
+        model = whisperx.load_model(WHISPER_MODEL, device, compute_type=compute_type)
+        audio = whisperx.load_audio(audio_path)
+        result = model.transcribe(audio, batch_size=8)
     del model; gc.collect(); torch.cuda.empty_cache() if device == "cuda" else None
 
-    model_a, meta = whisperx.load_align_model(language_code=result["language"], device=device)
-    result = whisperx.align(result["segments"], model_a, meta, audio, device, return_char_alignments=False)
+    with torch.inference_mode():
+        model_a, meta = whisperx.load_align_model(language_code=result["language"], device=device)
+        result = whisperx.align(result["segments"], model_a, meta, audio, device, return_char_alignments=False)
     del model_a; gc.collect(); torch.cuda.empty_cache() if device == "cuda" else None
 
     words = []

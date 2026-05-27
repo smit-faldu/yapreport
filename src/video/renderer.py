@@ -97,6 +97,20 @@ def create_ass_subtitles(words, duration, filename="captions.ass"):
     with open(filename, "w", encoding="utf-8") as f:
         f.write("\n".join(ass_lines))
 
+def check_nvenc_support():
+    """ Probes FFmpeg to see if NVIDIA H.264 NVENC encoder is supported. """
+    try:
+        result = subprocess.run(
+            ["ffmpeg", "-encoders"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=True
+        )
+        return "h264_nvenc" in result.stdout
+    except Exception:
+        return False
+
 def compile_video(timeline, duration, bg_video_path=None, audio_path=None, output_path=None):
     if bg_video_path is None: bg_video_path = BG_VIDEO_PATH
     if audio_path is None: audio_path = OUTPUT_AUDIO_PATH
@@ -124,7 +138,17 @@ def compile_video(timeline, duration, bg_video_path=None, audio_path=None, outpu
         f"[v2]subtitles=captions.ass:fontsdir='{fonts_dir_ffmpeg}'[outv]"
     )
 
-    # 3. Execute! Use veryfast CPU preset since hardware limits bottlenecks now
+    # 3. Dynamic Hardware-Acceleration Check & Options selection
+    has_nvenc = check_nvenc_support()
+    if has_nvenc:
+        print("💡 GPU encoding detected! Using NVIDIA NVENC Hardware Acceleration...")
+        # Note: h264_nvenc uses '-cq' (Constant Quality) with VBR, NOT '-crf'
+        encoder_args = ["-c:v", "h264_nvenc", "-preset", "fast", "-rc", "vbr", "-cq", "18"]
+    else:
+        print("⚠️ GPU encoding not supported or no NVIDIA hardware found. Using CPU fallback (libx264)...")
+        encoder_args = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "18"]
+
+    # 4. Execute!
     cmd = [
         "ffmpeg", "-y",
         "-stream_loop", "-1", "-i", bg_video_path,
@@ -135,7 +159,7 @@ def compile_video(timeline, duration, bg_video_path=None, audio_path=None, outpu
         "-map", "[outv]",
         "-map", "1:a",           # only take podcast audio, drop BG noise
         "-t", str(duration),     # Stop when the podcast stops
-        "-c:v", "h264_nvenc", "-preset", "fast", "-crf", "18",
+    ] + encoder_args + [
         "-c:a", "aac", "-b:a", "192k",
         "-hide_banner", "-loglevel", "warning",
         output_path
