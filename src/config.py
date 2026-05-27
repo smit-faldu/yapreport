@@ -10,10 +10,10 @@ if GOOGLE_API_KEY:
     os.environ["GOOGLE_API_KEY"] = GOOGLE_API_KEY
 
 # Reference Audio & Text
-TRUMP_REF_AUDIO = os.path.join(BASE_DIR, "assets", "new trump.wav")
+TRUMP_REF_AUDIO = os.path.join(BASE_DIR, "assets", "trump new fast.wav")
 TRUMP_REF_TEXT  = "Well, thank you very much, Larry. It's great to be back in beautiful Davos, Switzerland, and to address so many respected business leaders, so many friends, few enemies [laughing] and all of the distinguished"
 
-ELON_REF_AUDIO  = os.path.join(BASE_DIR, "assets", "new elon.wav")
+ELON_REF_AUDIO  = os.path.join(BASE_DIR, "assets", "elon new fast.wav")
 ELON_REF_TEXT   = "Okay, sure. Yes, um, I am Elon Musk, the CEO of Tesla and SpaceX, and previously of PayPal, but I sold that for $100 million and reinvested everything into where I am now. And my, my latest project"
 
 # Audio Settings

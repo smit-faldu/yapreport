@@ -22,11 +22,21 @@ __pycache__/
 .idea/
 .DS_Store
 
-# --- App-Specific Output & Assets ---
+# --- App-Specific Output ---
 # Prevents locally generated heavy media files from bloating the Docker context
 todays_script.json
 todays_podcast.wav
 temp_podcast_1_2x.wav
 final_short.mp4
 *_silent.mp4
-assets/
+# NOTE: assets/ is intentionally NOT excluded — the container needs the ref audio/images/video
+
+# Block python cache recursively anywhere in the project
+**/__pycache__/
+**/*.py[cod]
+**/*$py.class
+
+# Block app-specific generated files
+captions.ass
+fonts/
+*.log

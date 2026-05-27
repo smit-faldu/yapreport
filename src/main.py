@@ -4,7 +4,7 @@ import os
 import time # Added for unique filenames
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import json
-from fastapi import FastAPI, BackgroundTasks
+from fastapi import FastAPI, BackgroundTasks, HTTPException
 import uvicorn
 from src.agents.script_agent import run_script_pipeline
 from src.services.tts_service import run_tts_pipeline
@@ -72,14 +72,18 @@ def generate_video(background_tasks: BackgroundTasks):
 @app.get("/generate-sync")
 def generate_video_sync():
     video_url = run_pipeline()
-    response = {
-        "status": "success", 
-        "message": "Pipeline execution completed successfully"
+
+    if not video_url:
+        raise HTTPException(
+            status_code=500,
+            detail="Pipeline completed but Supabase upload failed — no video URL returned."
+        )
+
+    return {
+        "status": "success",
+        "message": "Pipeline execution completed successfully",
+        "video_url": video_url,
     }
-    if video_url:
-        response["video_url"] = video_url
-        
-    return response
 
 if __name__ == "__main__":
     uvicorn.run("src.main:app", host="0.0.0.0", port=8000, reload=True)
