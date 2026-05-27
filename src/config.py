@@ -11,10 +11,10 @@ if GOOGLE_API_KEY:
 
 # Reference Audio & Text
 TRUMP_REF_AUDIO = os.path.join(BASE_DIR, "assets", "trump new fast.wav")
-TRUMP_REF_TEXT  = "Well, thank you very much, Larry. It's great to be back in beautiful Davos, Switzerland, and to address so many respected business leaders, so many friends, few enemies [laughing] and all of the distinguished"
+TRUMP_REF_TEXT  = "And the Mexican government is much smarter, much sharper, much more cunning, and they send the bad ones over because they don't wanna pay for them. They don't wanna take care of them. Why should they when the stupid leaders of the United States will do it for them?"
 
 ELON_REF_AUDIO  = os.path.join(BASE_DIR, "assets", "elon new fast.wav")
-ELON_REF_TEXT   = "Okay, sure. Yes, um, I am Elon Musk, the CEO of Tesla and SpaceX, and previously of PayPal, but I sold that for $100 million and reinvested everything into where I am now. And my, my latest project"
+ELON_REF_TEXT   = """I always think of, like, Charlie and the Chocolate Factory when I hear the space elevator, you know? Um, uh, but-- 'cause people th- sort of manage like an elevator, you press up, and [chuckles] you're just like, "Now you're in space." Um, this is, like, a real-- This is extremely complicated"""
 
 # Audio Settings
 PAUSE_SEC          = 0.0   
