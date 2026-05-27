@@ -118,7 +118,6 @@ def compile_video(timeline, duration, bg_video_path=None, audio_path=None, outpu
     
     print("🎬 Rendering video natively with FFmpeg Engine...")
     
-    # 1. Build timestamp conditions for characters
     def get_enable_expr(target):
         exprs = [f"between(t,{t['start']},{t['end']})" for t in timeline if t["speaker"] == target]
         return "+".join(exprs) if exprs else "0"
@@ -128,7 +127,6 @@ def compile_video(timeline, duration, bg_video_path=None, audio_path=None, outpu
 
     fonts_dir_ffmpeg = FONTS_DIR.replace('\\', '/')
     
-    # 2. Build the Complex Filtergraph String
     filter_str = (
         f"[0:v]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},setsar=1[bg]; "
         f"[2:v]scale={PHOTO_SIZE}:{PHOTO_SIZE}[trump]; "
@@ -138,17 +136,15 @@ def compile_video(timeline, duration, bg_video_path=None, audio_path=None, outpu
         f"[v2]subtitles=captions.ass:fontsdir='{fonts_dir_ffmpeg}'[outv]"
     )
 
-    # 3. Dynamic Hardware-Acceleration Check & Options selection
     has_nvenc = check_nvenc_support()
     if has_nvenc:
         print("💡 GPU encoding detected! Using NVIDIA NVENC Hardware Acceleration...")
-        # Note: h264_nvenc uses '-cq' (Constant Quality) with VBR, NOT '-crf'
-        encoder_args = ["-c:v", "h264_nvenc", "-preset", "fast", "-rc", "vbr", "-cq", "18"]
+        # FIX: Changed from -cq 18 (massive files) to a capped 5Mbps bitrate
+        encoder_args = ["-c:v", "h264_nvenc", "-preset", "p4", "-b:v", "5M", "-maxrate", "6M", "-bufsize", "10M"]
     else:
-        print("⚠️ GPU encoding not supported or no NVIDIA hardware found. Using CPU fallback (libx264)...")
-        encoder_args = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "18"]
+        print("⚠️ GPU encoding not supported. Using CPU fallback (libx264)...")
+        encoder_args = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "23"]
 
-    # 4. Execute!
     cmd = [
         "ffmpeg", "-y",
         "-stream_loop", "-1", "-i", bg_video_path,
@@ -157,10 +153,13 @@ def compile_video(timeline, duration, bg_video_path=None, audio_path=None, outpu
         "-i", ELON_IMG,
         "-filter_complex", filter_str,
         "-map", "[outv]",
-        "-map", "1:a",           # only take podcast audio, drop BG noise
-        "-t", str(duration),     # Stop when the podcast stops
+        "-map", "1:a",           
+        "-t", str(duration),     
     ] + encoder_args + [
-        "-c:a", "aac", "-b:a", "192k",
+        "-c:a", "aac", 
+        "-ac", "2",               # FIX: Convert Mono to Stereo
+        "-b:a", "128k",           # FIX: Lower bitrate to prevent "Too many bits" AAC clamping error
+        "-shortest",              # FIX: Ensures absolute hard-cut when audio finishes
         "-hide_banner", "-loglevel", "warning",
         output_path
     ]

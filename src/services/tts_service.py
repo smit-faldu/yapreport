@@ -1,3 +1,4 @@
+import gc
 import torch
 import numpy as np
 import soundfile as sf
@@ -10,6 +11,23 @@ from src.config import (
     ELON_REF_AUDIO, ELON_REF_TEXT,
     PAUSE_SEC, OMNIVOICE_SR, OUTPUT_AUDIO_PATH
 )
+
+def _unload_model(model, label: str = "model"):
+    """
+    Aggressively release a PyTorch model from GPU/CPU memory.
+    Moves weights to CPU first (avoids CUDA ref-count leaks), then deletes
+    the object, runs the GC, and flushes the CUDA allocator cache.
+    """
+    try:
+        model.cpu()          # move tensors off GPU before deletion
+    except Exception:
+        pass
+    del model
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        torch.cuda.synchronize()
+    print(f"🗑️  {label} unloaded — GPU memory freed.")
 
 def load_tts_model():
     """
@@ -80,6 +98,9 @@ def run_tts_pipeline(script: Script):
             silence = make_silence(OMNIVOICE_SR, PAUSE_SEC)
             all_audio.append(silence)
 
+    # ── Unload TTS model — free GPU VRAM before WhisperX loads ───────────────
+    _unload_model(model, "OmniVoice TTS")
+
     if not all_audio:
         print("❌ No audio generated. Check your ref WAVs and GPU.")
         return
@@ -89,7 +110,7 @@ def run_tts_pipeline(script: Script):
     duration = len(final_audio) / OMNIVOICE_SR
     print(f"\n🎉 Podcast saved → {OUTPUT_AUDIO_PATH}  ({duration:.1f}s total)")
 
-    # ── NEW SPEED-UP LOGIC ───────────────────────────────────────────────────
+    # ── SPEED-UP LOGIC ───────────────────────────────────────────────────────
     print("\n⏩ Speeding up audio to 1.2x using SoX...")
     temp_output = "temp_podcast_1_2x.wav"
     try:
