@@ -7,12 +7,13 @@ def fetch_news(state: GraphState) -> dict:
     print("📰 Fetching global headlines...")
 
     feeds = {
-        "Geopolitics (Al Jazeera)": "https://www.aljazeera.com/xml/rss/all.xml",
-        "Geopolitics (BBC)":        "http://feeds.bbci.co.uk/news/world/rss.xml",
-        "Finance (Yahoo)":          "https://finance.yahoo.com/news/rss",
-        "Tech (NYT)":               "https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml",
-        "Climate (NYT)":            "https://rss.nytimes.com/services/xml/rss/nyt/Climate.xml",
-        "Science (BBC)":            "http://feeds.bbci.co.uk/news/science_and_environment/rss.xml",
+        "Geopolitics (BBC)":          "http://feeds.bbci.co.uk/news/world/rss.xml",
+        "Finance (Yahoo)":            "https://finance.yahoo.com/news/rss",
+        "Tech (BBC)":                 "https://feeds.bbci.co.uk/news/technology/rss.xml",
+        "Science & Environment(BBC)": "http://feeds.bbci.co.uk/news/science_and_environment/rss.xml",
+        "Health (BBC)":               "https://feeds.bbci.co.uk/news/health/rss.xml",
+        "business (BBC)":             "https://feeds.bbci.co.uk/news/business/rss.xml",
+        "politics (BBC)":             "https://feeds.bbci.co.uk/news/politics/rss.xml",
     }
 
     all_news = ""

@@ -48,10 +48,10 @@ STROKE_W       = 5
 # Portrait design
 PHOTO_SIZE     = 650
 PHOTO_X        = (W - PHOTO_SIZE) // 2
-PHOTO_Y        = H - PHOTO_SIZE - 50
+PHOTO_Y        = H - PHOTO_SIZE - 150
 
 # WhisperX and Fonts
 WHISPER_MODEL  = "large-v3"
 FONTS_DIR = os.path.join(BASE_DIR, "fonts")
 FONT_PATH = os.path.join(FONTS_DIR, "Montserrat-Black.ttf")
-FONT_URL  = "https://github.com/JulietaUla/Montserrat/blob/master/fonts/ttf/Montserrat-Black.ttf"
+FONT_URL  = "https://raw.githubusercontent.com/JulietaUla/Montserrat/master/fonts/ttf/Montserrat-Black.ttf"

@@ -118,6 +118,8 @@ def compile_video(timeline, duration, bg_video_path=None, audio_path=None, outpu
     if output_path is None: output_path = OUTPUT_VIDEO_PATH
     
     print("🎬 Rendering video with Dynamic Pop-Up Animations...")
+    # Ensure required fonts are available for the ASS subtitles filter
+    ensure_font()
     
     # 1. Helper to generate the enable condition (when they are visible)
     def get_enable_expr(target):
@@ -156,10 +158,11 @@ def compile_video(timeline, duration, bg_video_path=None, audio_path=None, outpu
     # 3. Apply the dynamic 'y' expressions in the overlay filters
     filter_str = (
         f"[0:v]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},setsar=1,eq=brightness=-0.15:saturation=1.2[bg]; "
-        f"[2:v]scale={PHOTO_SIZE}:{PHOTO_SIZE}[trump]; "
-        f"[3:v]scale={PHOTO_SIZE}:{PHOTO_SIZE}[elon]; "
         
-        # Notice we are now using y='{trump_y_anim}' and y='{elon_y_anim}'
+        # CHANGE HERE: Replace the second {PHOTO_SIZE} with -1 to preserve the aspect ratio!
+        f"[2:v]scale={PHOTO_SIZE}:-1[trump]; "
+        f"[3:v]scale={PHOTO_SIZE}:-1[elon]; "
+        
         f"[bg][trump]overlay=x={PHOTO_X}:y='{trump_y_anim}':enable='{trump_enable}'[v1]; "
         f"[v1][elon]overlay=x={PHOTO_X}:y='{elon_y_anim}':enable='{elon_enable}'[v2]; "
         f"[v2]subtitles=captions.ass:fontsdir='{fonts_dir_ffmpeg}'[outv]"
