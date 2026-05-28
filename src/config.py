@@ -37,9 +37,9 @@ W, H = 1080, 1920
 FPS  = 30
 
 # Caption design
-FONT_SIZE      = 75
-WORDS_PER_CAP  = 3
-CAPTION_Y      = int(H * 0.50)
+FONT_SIZE      = 95  # Increased for better readability on small screens
+WORDS_PER_CAP  = 1   # Reduced from 3 to 1 for rapid-fire, high-retention pacing
+CAPTION_Y      = int(H * 0.45) # Moved slightly higher to clear the character portraits
 C_WHITE        = (255, 255, 255, 255)
 C_GREEN        = (0, 255, 0,   255)
 C_STROKE       = (0,   0,   0,   255)
@@ -51,7 +51,7 @@ PHOTO_X        = (W - PHOTO_SIZE) // 2
 PHOTO_Y        = H - PHOTO_SIZE - 50
 
 # WhisperX and Fonts
-WHISPER_MODEL  = "base"
+WHISPER_MODEL  = "large-v3"
 FONTS_DIR = os.path.join(BASE_DIR, "fonts")
-FONT_PATH = os.path.join(FONTS_DIR, "LuckiestGuy-Regular.ttf")
-FONT_URL  = "https://github.com/google/fonts/raw/main/apache/luckiestguy/LuckiestGuy-Regular.ttf"
+FONT_PATH = os.path.join(FONTS_DIR, "Montserrat-Black.ttf")
+FONT_URL  = "https://github.com/JulietaUla/Montserrat/blob/master/fonts/ttf/Montserrat-Black.ttf"

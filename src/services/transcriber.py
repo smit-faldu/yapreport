@@ -3,6 +3,7 @@ import json
 import gc
 import torch
 import re
+import difflib  # <-- NEW IMPORT
 from src.config import WHISPER_MODEL
 
 _original_load = torch.load
@@ -42,13 +43,12 @@ def transcribe(audio_path, dialogue):
     del model_a
     _flush_gpu("WhisperX alignment model")
 
-    # ── Step 3: Map words → speakers from script ──────────────────────────────
+    # ── Step 3: Map words → speakers from script (ROBUST GLOBAL ALIGNMENT) ────
     words = []
     for seg in result["segments"]:
         for w in seg.get("words", []):
             words.append({"word": w["word"].strip(), "start": w.get("start", 0), "end": w.get("end", 0)})
 
-    # Script alignment mapping
     script_tokens = []
     for turn in dialogue:
         for raw_word in turn["line"].split():
@@ -56,26 +56,41 @@ def transcribe(audio_path, dialogue):
             if clean_word:
                 script_tokens.append({"text": clean_word, "speaker": turn["speaker"].lower()})
 
-    script_idx = 0
+    if not words or not script_tokens:
+        return words
+
+    # Extract clean text lists for diffing
+    whisper_text = [re.sub(r'[^a-z0-9]', '', w["word"].lower()) for w in words]
+    script_text = [t["text"] for t in script_tokens]
+
+    # Initialize all words with no speaker
     for w in words:
-        clean_w = re.sub(r'[^a-z0-9]', '', w["word"].lower())
-        if not clean_w:
-            w["speaker"] = script_tokens[min(script_idx, len(script_tokens)-1)]["speaker"]
-            continue
+        w["speaker"] = None
 
-        match_found = False
-        for offset in range(15):
-            check_idx = script_idx + offset
-            if check_idx >= len(script_tokens): break
-            if script_tokens[check_idx]["text"] == clean_w:
-                w["speaker"] = script_tokens[check_idx]["speaker"]
-                script_idx = check_idx + 1
-                match_found = True
-                break
+    # Use difflib to find global matching blocks (bypasses skipped/mumbled lines gracefully)
+    sm = difflib.SequenceMatcher(None, whisper_text, script_text)
+    
+    for match in sm.get_matching_blocks():
+        for i in range(match.size):
+            w_idx = match.a + i
+            s_idx = match.b + i
+            words[w_idx]["speaker"] = script_tokens[s_idx]["speaker"]
 
-        if not match_found:
-            safe_idx = min(script_idx, len(script_tokens) - 1)
-            w["speaker"] = script_tokens[safe_idx]["speaker"]
+    # Forward/Backward fill for words that Whisper mispronounced and weren't exact matches
+    last_speaker = script_tokens[0]["speaker"] 
+    for w in words:
+        if w["speaker"] is not None:
+            last_speaker = w["speaker"]
+        else:
+            w["speaker"] = last_speaker
+            
+    # Quick backward pass to catch any unmatched words at the very beginning
+    last_speaker = words[-1]["speaker"] if words[-1]["speaker"] else script_tokens[-1]["speaker"]
+    for w in reversed(words):
+        if w["speaker"] is not None:
+            last_speaker = w["speaker"]
+        else:
+            w["speaker"] = last_speaker
 
     print(f"   ✅ {len(words)} words aligned.")
     return words

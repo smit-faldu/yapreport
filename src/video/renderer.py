@@ -44,10 +44,13 @@ def build_timeline(words):
     return timeline
 
 def create_ass_subtitles(words, duration, filename="captions.ass"):
-    """ Generates a hardware-accelerated subtitle file for FFmpeg with karaoke color overrides. """
     print("📝 Generating Subtitles (ASS)...")
     
-    # ASS Header with Styling (Alignment 8 = Top Center. MarginV 960 pushes it to the middle)
+    # Updated ASS Header: 
+    # - Changed Fontname to Montserrat Black
+    # - Increased Outline (Border) to 8
+    # - Added a Shadow of 5
+    # - Alignment 8 is Top Center
     ass_lines = [
         "[Script Info]",
         "ScriptType: v4.00+",
@@ -56,7 +59,7 @@ def create_ass_subtitles(words, duration, filename="captions.ass"):
         "",
         "[V4+ Styles]",
         "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
-        "Style: Default,Luckiest Guy,75,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,5,0,8,10,10,960,1",
+        "Style: Default,Montserrat Black,95,&H00FFFFFF,&H000000FF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,8,5,8,10,10,900,1", 
         "",
         "[Events]",
         "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text"
@@ -67,7 +70,6 @@ def create_ass_subtitles(words, duration, filename="captions.ass"):
         chunk = words[i:i+WORDS_PER_CAP]
         chunk_start = chunk[0].get("start", last_time)
         
-        # Keep caption on screen until next chunk starts
         if i + WORDS_PER_CAP < len(words):
             chunk_end = words[i+WORDS_PER_CAP].get("start", chunk[-1].get("end", chunk_start + 1.0))
         else:
@@ -76,7 +78,6 @@ def create_ass_subtitles(words, duration, filename="captions.ass"):
         chunk_end = min(chunk_end, duration)
         last_time = chunk_end
 
-        # Emit an event for each word's highlight span
         for j, w in enumerate(chunk):
             w_start = w.get("start", chunk_start)
             w_end = chunk[j+1].get("start", w.get("end", w_start + 0.2)) if j + 1 < len(chunk) else chunk_end
@@ -86,8 +87,8 @@ def create_ass_subtitles(words, duration, filename="captions.ass"):
             for k, cw in enumerate(chunk):
                 raw_text = cw["word"].replace("{", "").replace("}", "").upper()
                 if k == j:
-                    # &H00FF00& = Green, &HFFFFFF& = White
-                    text_parts.append(f"{{\\c&H00FF00&}}{raw_text}{{\\c&HFFFFFF&}}")
+                    # Changed highlight to bright Yellow (&H0000FFFF in ASS format)
+                    text_parts.append(f"{{\\c&H0000FFFF&}}{raw_text}{{\\c&HFFFFFF&}}")
                 else:
                     text_parts.append(raw_text)
 
@@ -116,23 +117,51 @@ def compile_video(timeline, duration, bg_video_path=None, audio_path=None, outpu
     if audio_path is None: audio_path = OUTPUT_AUDIO_PATH
     if output_path is None: output_path = OUTPUT_VIDEO_PATH
     
-    print("🎬 Rendering video natively with FFmpeg Engine...")
+    print("🎬 Rendering video with Dynamic Pop-Up Animations...")
     
+    # 1. Helper to generate the enable condition (when they are visible)
     def get_enable_expr(target):
         exprs = [f"between(t,{t['start']},{t['end']})" for t in timeline if t["speaker"] == target]
         return "+".join(exprs) if exprs else "0"
 
+    # 2. NEW Helper to generate the fast slide-up animation expression
+    def get_y_expr(target, base_y, anim_duration=0.15, slide_distance=300):
+        # Finds all speaking segments for this character
+        segments = [t for t in timeline if t["speaker"] == target]
+        if not segments: return str(base_y)
+        
+        expr = str(base_y)
+        # We build a nested if/else statement for FFmpeg for every time they speak
+        for seg in reversed(segments):
+            start = seg['start']
+            end = seg['end']
+            
+            # The Math: Starts `slide_distance` pixels lower, and rapidly moves to `base_y` over `anim_duration` seconds
+            active_y = f"{base_y}+max(0,{slide_distance}*(1-(t-{start})/{anim_duration}))"
+            
+            # If current time is within this segment, use the animation math, otherwise fall back to previous logic
+            expr = f"if(between(t,{start},{end}), {active_y}, {expr})"
+            
+        return expr
+
     trump_enable = get_enable_expr("trump")
     elon_enable = get_enable_expr("elon")
+    
+    # Generate the dynamic Y-coordinates for the pop-up effect
+    trump_y_anim = get_y_expr("trump", PHOTO_Y)
+    elon_y_anim = get_y_expr("elon", PHOTO_Y)
 
     fonts_dir_ffmpeg = FONTS_DIR.replace('\\', '/')
     
+    # 3. Apply the dynamic 'y' expressions in the overlay filters
     filter_str = (
-        f"[0:v]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},setsar=1[bg]; "
+        f"[0:v]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},setsar=1,eq=brightness=-0.15:saturation=1.2[bg]; "
         f"[2:v]scale={PHOTO_SIZE}:{PHOTO_SIZE}[trump]; "
         f"[3:v]scale={PHOTO_SIZE}:{PHOTO_SIZE}[elon]; "
-        f"[bg][trump]overlay=x={PHOTO_X}:y={PHOTO_Y}:enable='{trump_enable}'[v1]; "
-        f"[v1][elon]overlay=x={PHOTO_X}:y={PHOTO_Y}:enable='{elon_enable}'[v2]; "
+        
+        # Notice we are now using y='{trump_y_anim}' and y='{elon_y_anim}'
+        f"[bg][trump]overlay=x={PHOTO_X}:y='{trump_y_anim}':enable='{trump_enable}'[v1]; "
+        f"[v1][elon]overlay=x={PHOTO_X}:y='{elon_y_anim}':enable='{elon_enable}'[v2]; "
         f"[v2]subtitles=captions.ass:fontsdir='{fonts_dir_ffmpeg}'[outv]"
     )
 
