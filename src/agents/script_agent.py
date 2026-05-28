@@ -3,16 +3,16 @@ import random
 from langgraph.graph import StateGraph, END
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
-from src.models.schemas import GraphState, Script, CuratedStory
+from src.models.schemas import GraphState, Script, CuratedStory, SocialMetadata
 from src.services.news_scraper import fetch_news, scrape_news_page
-from src.config import OUTPUT_SCRIPT_PATH
+from src.config import OUTPUT_SCRIPT_PATH, OUTPUT_SOCIAL_PATH, GEMINI_API_KEY_SECONDARY, GOOGLE_API_KEY
 
-flash_llm = ChatGoogleGenerativeAI(model="gemini-3.5-flash", temperature=0.7)
-pro_llm = ChatGoogleGenerativeAI(model="gemini-3.5-flash", temperature=0.7)
+creation_llm = ChatGoogleGenerativeAI(model="gemini-3.5-flash", temperature=0.7, google_api_key=GOOGLE_API_KEY)
+distribution_llm = ChatGoogleGenerativeAI(model="gemini-3.5-flash", temperature=0.7, google_api_key=GEMINI_API_KEY_SECONDARY)
 
 def curate_news(state: GraphState) -> dict:
     print("🧠 Curating top story...")
-    curator_llm = flash_llm.with_structured_output(CuratedStory)
+    curator_llm = creation_llm.with_structured_output(CuratedStory)
 
     prompt = ChatPromptTemplate.from_messages([
         ("system", "You are a news producer. Pick the ONE most explosive or dramatic story from today's raw news."),
@@ -33,7 +33,7 @@ def curate_news(state: GraphState) -> dict:
 
 def write_script(state: GraphState) -> dict:
     print("✍️  Writing hyper-engaging comedy roast script...")
-    structured_llm = pro_llm.with_structured_output(Script)
+    structured_llm = creation_llm.with_structured_output(Script)
 
     first_speaker  = random.choice(["Trump", "Elon"])
     second_speaker = "Elon" if first_speaker == "Trump" else "Trump"
@@ -130,8 +130,69 @@ RAW SCRAPED ARTICLE TEXT:
         "scraped_text": state['scraped_text']
     })
 
+    return {"draft_script": response.model_dump_json(indent=2)}
+
+def review_script(state: GraphState) -> dict:
+    print("🕵️‍♂️ Review Agent: Polishing script for maximum retention & humor...")
+    structured_llm = distribution_llm.with_structured_output(Script)
+
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", """You are a master viral content reviewer. Your job is to double-check a generated short-form video script featuring Donald Trump and Elon Musk.
+        
+        EVALUATION CRITERIA:
+        1. Does the first line grab attention instantly?
+        2. Is the comedy punchy and easy for a general audience to understand?
+        3. Are the audio tags (like [laughter], [surprise-oh]) used correctly without breaking the flow?
+        4. Is it exactly 10 lines of alternating speakers?
+        
+        ACTION: 
+        If the script is already top-tier, return it exactly as is. 
+        If it feels flat, too complex, or misses the mark, rewrite the weak lines to make it funnier and more engaging while strictly maintaining the JSON structure and speaker format.
+        """),
+        ("human", "CURRENT SCRIPT:\n{final_script}\n\nBASED ON NEWS:\n{curated_news}")
+    ])
+    
+    chain = prompt | structured_llm
+    response = chain.invoke({
+        "final_script": state['draft_script'],
+        "curated_news": state['curated_news']
+    })
+
     return {"final_script": response.model_dump_json(indent=2)}
 
+
+# --- NEW AGENT 2: Social Media SEO Writer ---
+def write_social_copy(state: GraphState) -> dict:
+    print("📱 Social Agent: Generating SEO-driven universal caption and YouTube description...")
+    structured_llm = distribution_llm.with_structured_output(SocialMetadata)
+
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", """You are a top-tier social media growth hacker and SEO expert.
+        
+        Based on the finalized video script and the core news topic, generate the posting metadata.
+        
+        REQUIREMENTS:
+        1. Universal Caption (For TikTok, IG Reels, and YouTube Shorts):
+           - Length: Medium length (around 3 to 5 sentences). Not too short, not a massive essay.
+           - Structure: Start with an undeniable hook, add a bit of context/humor related to the script, and end with a call to action (e.g., "What do you think?").
+           - SEO: Weave in high-volume search terms naturally.
+           - Hashtags: Include 5 to 8 highly targeted, trending hashtags at the very bottom.
+           
+        2. YouTube Description (Strictly for YouTube):
+           - Length: A solid, detailed paragraph or two.
+           - SEO Strategy: Write an extremely SEO-rich description that expands on the news topic using long-tail keywords to capture YouTube search intent.
+           - Rule: Do NOT make it look like a list of tags. It must read like a natural, engaging summary of the topic while acting as algorithm bait.
+        """),
+        ("human", "FINAL SCRIPT:\n{final_script}\n\nBASED ON NEWS:\n{curated_news}")
+    ])
+    
+    chain = prompt | structured_llm
+    response = chain.invoke({
+        "final_script": state['final_script'],
+        "curated_news": state['curated_news']
+    })
+
+    return {"social_content": response.model_dump_json(indent=2)}
 
 def route_after_fetch(state: GraphState) -> str:
     # If no raw news was fetched or it's empty, we end the graph early to avoid LLM errors
@@ -140,12 +201,15 @@ def route_after_fetch(state: GraphState) -> str:
         return "end"
     return "continue"
 
-def run_script_pipeline() -> Script:
+def run_script_pipeline() -> tuple[Script, dict]: # <-- Note the return type change
     workflow = StateGraph(GraphState)
+    
     workflow.add_node("fetch_node",  fetch_news)
     workflow.add_node("curate_node", curate_news)
     workflow.add_node("scrape_node", scrape_news_page)
     workflow.add_node("script_node", write_script)
+    workflow.add_node("review_node", review_script)       # NEW
+    workflow.add_node("social_node", write_social_copy)   # NEW
 
     workflow.set_entry_point("fetch_node")
     
@@ -158,23 +222,60 @@ def run_script_pipeline() -> Script:
         }
     )
     
+    # Updated Flow
     workflow.add_edge("curate_node", "scrape_node")
     workflow.add_edge("scrape_node", "script_node")
-    workflow.add_edge("script_node", END)
+    workflow.add_edge("script_node", "review_node")
+    workflow.add_edge("review_node", "social_node")
+    workflow.add_edge("social_node", END)
 
     app = workflow.compile()
 
-    print("\n🚀 Starting Pipeline...\n")
-    result = app.invoke({"raw_news": "", "curated_news": "", "target_url": "", "scraped_text": "", "final_script": ""})
+    print("\n🚀 Starting Multi-Agent Pipeline...\n")
+    result = app.invoke({
+        "raw_news": "", "curated_news": "", "target_url": "",
+        "scraped_text": "", "draft_script": "", "final_script": "", "social_content": ""
+    })
 
-    json_str = result.get("final_script", "")
+    # 1. Process Script
+    draft_str = result.get("draft_script", "")
+    json_str  = result.get("final_script", "")
     if not json_str:
         print("❌ Pipeline failed to generate a script.")
-        # Return a fallback script or raise exception
-        return Script(dialogue=[])
-        
-    print("\n✅ Script generated!\n", json_str)
+        return Script(dialogue=[]), {}
+
+    # ── Comparison Print ──────────────────────────────────────────────────────
+    SEP = "─" * 60
+    def _fmt_script(raw_json: str) -> str:
+        try:
+            data = json.loads(raw_json)
+            lines = []
+            for i, entry in enumerate(data.get("dialogue", []), 1):
+                lines.append(f"  {i:>2}. [{entry['speaker']:^5}] {entry['line']}")
+            return "\n".join(lines)
+        except Exception:
+            return raw_json
+
+    print(f"\n{'═'*60}")
+    print("  ✍️   WRITE AGENT — Draft Script (before review)")
+    print(f"{SEP}")
+    print(_fmt_script(draft_str))
+    print(f"\n{'═'*60}")
+    print("  🕵️   REVIEW AGENT — Final Script (after polish)")
+    print(f"{SEP}")
+    print(_fmt_script(json_str))
+    print(f"{'═'*60}\n")
+    # ─────────────────────────────────────────────────────────────────────────
 
     with open(OUTPUT_SCRIPT_PATH, "w") as f:
         f.write(json_str)
-    return Script(**json.loads(json_str))
+        
+    # 2. Process Social Copy
+    social_str = result.get("social_content", "{}")
+    social_dict = json.loads(social_str) if social_str else {}
+    
+    print("\n✅ Social Copy generated!\n", social_str)
+    with open(OUTPUT_SOCIAL_PATH, "w") as f:
+        json.dump(social_dict, f, indent=2)
+
+    return Script(**json.loads(json_str)), social_dict

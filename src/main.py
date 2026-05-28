@@ -25,7 +25,8 @@ def run_pipeline():
     print(" PHASE 1: Script & Audio Generation")
     print("="*50)
 
-    script = run_script_pipeline()
+    # UNPACK BOTH RETURNS
+    script, social_data = run_script_pipeline()
     run_tts_pipeline(script)
 
     print("\n✅ Phase 1 complete! Podcast saved to", OUTPUT_AUDIO_PATH)
@@ -33,7 +34,6 @@ def run_pipeline():
     print("\n" + "="*50)
     print(" PHASE 2: Video Renderer — FFmpeg Filtergraph Edition")
     print("="*50)
-
     ensure_font()
 
     dialogue = json.load(open(OUTPUT_SCRIPT_PATH))["dialogue"]
@@ -48,14 +48,13 @@ def run_pipeline():
 
     mb = os.path.getsize(OUTPUT_VIDEO_PATH) / 1024 / 1024
     print(f"\n🎉 Done! → {OUTPUT_VIDEO_PATH}  ({mb:.1f} MB)")
-
-    # --- NEW: Supabase Upload ---
-    # Create a unique filename based on timestamp to avoid overwriting previous videos
+    
     timestamp = int(time.time())
     remote_filename = f"yapreport_{timestamp}.mp4"
     public_url = upload_video(OUTPUT_VIDEO_PATH, remote_filename)
     
-    return public_url
+    # Return both the video URL and the SEO Social Metadata
+    return public_url, social_data
 
 
 app = FastAPI()
@@ -71,7 +70,7 @@ def generate_video(background_tasks: BackgroundTasks):
 
 @app.get("/generate-sync")
 def generate_video_sync():
-    video_url = run_pipeline()
+    video_url, social_metadata = run_pipeline()
 
     if not video_url:
         raise HTTPException(
@@ -83,6 +82,7 @@ def generate_video_sync():
         "status": "success",
         "message": "Pipeline execution completed successfully",
         "video_url": video_url,
+        "social_metadata": social_metadata # <-- Easily accessible for auto-posting
     }
 
 if __name__ == "__main__":

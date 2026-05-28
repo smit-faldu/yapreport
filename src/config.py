@@ -9,6 +9,8 @@ GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 if GOOGLE_API_KEY:
     os.environ["GOOGLE_API_KEY"] = GOOGLE_API_KEY
 
+GEMINI_API_KEY_SECONDARY = os.environ.get("GEMINI_API_KEY_SECONDARY")
+
 # Reference Audio & Text
 TRUMP_REF_AUDIO = os.path.join(BASE_DIR, "assets", "trump new fast.wav")
 TRUMP_REF_TEXT  = "And the Mexican government is much smarter, much sharper, much more cunning, and they send the bad ones over because they don't wanna pay for them. They don't wanna take care of them. Why should they when the stupid leaders of the United States will do it for them?"
@@ -55,3 +57,4 @@ WHISPER_MODEL  = "large-v3"
 FONTS_DIR = os.path.join(BASE_DIR, "fonts")
 FONT_PATH = os.path.join(FONTS_DIR, "Montserrat-Black.ttf")
 FONT_URL  = "https://raw.githubusercontent.com/JulietaUla/Montserrat/master/fonts/ttf/Montserrat-Black.ttf"
+OUTPUT_SOCIAL_PATH = "todays_social.json"
