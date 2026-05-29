@@ -38,7 +38,8 @@ def write_script(state: GraphState) -> dict:
     first_speaker  = random.choice(["Trump", "Elon"])
     second_speaker = "Elon" if first_speaker == "Trump" else "Trump"
 
-    order = " → ".join([first_speaker if i % 2 == 0 else second_speaker for i in range(10)])
+    # CHANGE 1: Update range(10) to range(9)
+    order = " → ".join([first_speaker if i % 2 == 0 else second_speaker for i in range(9)])
 
     prompt = ChatPromptTemplate.from_messages([
         ("system", """You are a ruthless, award-winning satirical comedy writer for "Yap Report", a viral, short-form brainrot news show (TikTok/Shorts/Reels). Your job is to transform boring news into a high-octane verbal roast battle between Donald Trump and Elon Musk.
@@ -72,13 +73,13 @@ RULE 1 — STRICT FACTUAL GROUNDING
 - Do not make up alternative facts about what happened; simply satirize and exaggerate the real news context provided.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-RULE 2 — THE 10-LINE HIGH-RETENTION STRUCTURE
+RULE 2 — THE 9-LINE HIGH-RETENTION STRUCTURE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-You must strictly follow this exact narrative pace across EXACTLY 10 lines:
+You must strictly follow this exact narrative pace across EXACTLY 9 lines:
 - Line 1-2 (The Aggressive Hook): Speaker A drops the craziest, funniest summary of the headline. Speaker B responds with instant clowning or shock.
-- Line 3-6 (The Roast Explanation): Break down the "how" and "why" of the news using tight conversational connectors (e.g., "Wait, so this clown actually...", "Yeah, it’s literally sub-optimal...").
-- Line 7-9 (The Billionaire Perspective): Both characters mock how this impacts the future of humanity or their own massive bank accounts.
-- Line 10 (The Unhinged CTA).
+- Line 3-5 (The Roast Explanation): Break down the "how" and "why" of the news using tight conversational connectors (e.g., "Wait, so this clown actually...", "Yeah, it’s literally sub-optimal...").
+- Line 6-8 (The Billionaire Perspective): Both characters mock how this impacts the future of humanity or their own massive bank accounts.
+- Line 9 (The Unhinged CTA).
 
 Target length: 12 to 22 words per line. Keep it punchy!
 
@@ -105,15 +106,15 @@ PLACEMENT RULES (CRITICAL):
 - NO TEMPLATES: Never just predictably slap a tag at the very front or very end of *every single line*. Vary the placement so the conversation feels entirely unpredictable and human.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-RULE 4 — THE RIDICULOUS PHYSICAL CTA (LINE 10)
+RULE 4 — THE RIDICULOUS PHYSICAL CTA (LINE 9)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Line 10 MUST be an aggressive, high-stakes, unhinged threat to the user if they don't subscribe.
+Line 9 MUST be an aggressive, high-stakes, unhinged threat to the user if they don't subscribe.
 Format: "Follow Yap Report OR [Insane threat/bizarre cosmic consequence]."
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 FORMATTING EXECUTABLES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- Total lines: EXACTLY 10.
+- Total lines: EXACTLY 9.
 - Speaker order execution: {order}
 - Speakers MUST strictly alternate every single line."""),
         ("human", """MAIN NEWS HEADLINE:
@@ -143,7 +144,7 @@ def review_script(state: GraphState) -> dict:
         1. Does the first line grab attention instantly?
         2. Is the comedy punchy and easy for a general audience to understand?
         3. Are the audio tags (like [laughter], [surprise-oh]) used correctly without breaking the flow?
-        4. Is it exactly 10 lines of alternating speakers?
+        4. Is it exactly 9 lines of alternating speakers?
         
         ACTION: 
         If the script is already top-tier, return it exactly as is. 
@@ -151,7 +152,7 @@ def review_script(state: GraphState) -> dict:
         """),
         ("human", "CURRENT SCRIPT:\n{final_script}\n\nBASED ON NEWS:\n{curated_news}")
     ])
-    
+  
     chain = prompt | structured_llm
     response = chain.invoke({
         "final_script": state['draft_script'],
@@ -163,7 +164,7 @@ def review_script(state: GraphState) -> dict:
 
 # --- NEW AGENT 2: Social Media SEO Writer ---
 def write_social_copy(state: GraphState) -> dict:
-    print("📱 Social Agent: Generating SEO-driven universal caption and YouTube description...")
+    print("📱 Social Agent: Generating Instagram/Facebook caption, YouTube title, and YouTube description...")
     structured_llm = distribution_llm.with_structured_output(SocialMetadata)
 
     prompt = ChatPromptTemplate.from_messages([
@@ -172,13 +173,20 @@ def write_social_copy(state: GraphState) -> dict:
         Based on the finalized video script and the core news topic, generate the posting metadata.
         
         REQUIREMENTS:
-        1. Universal Caption (For TikTok, IG Reels, and YouTube Shorts):
-           - Length: Medium length (around 3 to 5 sentences). Not too short, not a massive essay.
+        1. Universal Caption (Strictly for Instagram and Facebook Reels ONLY):
+           - Length: Medium length (around 1 to 3 sentences). Not too short, not a massive essay.
            - Structure: Start with an undeniable hook, add a bit of context/humor related to the script, and end with a call to action (e.g., "What do you think?").
            - SEO: Weave in high-volume search terms naturally.
            - Hashtags: Include 5 to 8 highly targeted, trending hashtags at the very bottom.
            
-        2. YouTube Description (Strictly for YouTube):
+        2. YouTube Title (Strictly for YouTube Shorts ONLY):
+           - Length: HARD LIMIT of 70 characters. Shorter is better.
+           - Format: Punchy, curiosity-driven, and front-loaded with the most important keyword or name (e.g., "Trump & Elon ROAST...").
+           - SEO: Use high-volume search keywords people would actually type on YouTube.
+           - Tone: Clickbait-y but not misleading. Matches the comedic/satirical tone of the show.
+           - Do NOT use hashtags in the title. Just the title text itself.
+           
+        3. YouTube Description (Strictly for YouTube):
            - Length: A solid, detailed paragraph or two.
            - SEO Strategy: Write an extremely SEO-rich description that expands on the news topic using long-tail keywords to capture YouTube search intent.
            - Rule: Do NOT make it look like a list of tags. It must read like a natural, engaging summary of the topic while acting as algorithm bait.
@@ -201,7 +209,7 @@ def route_after_fetch(state: GraphState) -> str:
         return "end"
     return "continue"
 
-def run_script_pipeline() -> tuple[Script, dict]: # <-- Note the return type change
+def run_script_pipeline() -> tuple[Script, dict, str, str]:
     workflow = StateGraph(GraphState)
     
     workflow.add_node("fetch_node",  fetch_news)
@@ -278,4 +286,8 @@ def run_script_pipeline() -> tuple[Script, dict]: # <-- Note the return type cha
     with open(OUTPUT_SOCIAL_PATH, "w") as f:
         json.dump(social_dict, f, indent=2)
 
-    return Script(**json.loads(json_str)), social_dict
+    # Extract URL and title before returning
+    target_url = result.get("target_url", "")
+    curated_news = result.get("curated_news", "")
+
+    return Script(**json.loads(json_str)), social_dict, target_url, curated_news

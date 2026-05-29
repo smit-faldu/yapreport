@@ -25,5 +25,6 @@ class CuratedStory(BaseModel):
 
 # NEW: Schema for the Social Media Agent
 class SocialMetadata(BaseModel):
-    universal_caption: str = Field(description="A medium-length, SEO-driven caption with hashtags to be used across all platforms (TikTok, Reels, Shorts).")
+    universal_caption: str = Field(description="A medium-length, SEO-driven caption with hashtags for Instagram and Facebook Reels only.")
+    youtube_title: str = Field(description="A short, punchy, SEO-optimized title for YouTube Shorts. Must be under 70 characters and contain high-volume keywords.")
     youtube_description: str = Field(description="A longer, highly SEO-optimized description specifically for the YouTube Shorts description box.")

@@ -2,9 +2,15 @@ import feedparser
 import requests
 from bs4 import BeautifulSoup
 from src.models.schemas import GraphState
+from src.services.supabase_uploader import get_covered_urls # NEW IMPORT
 
 def fetch_news(state: GraphState) -> dict:
     print("📰 Fetching global headlines...")
+    
+    # NEW: Fetch already covered URLs
+    covered_urls = get_covered_urls()
+    if covered_urls:
+        print(f"🛡️  Found {len(covered_urls)} previously covered articles. Filtering them out...")
 
     feeds = {
         "Geopolitics (BBC)":          "http://feeds.bbci.co.uk/news/world/rss.xml",
@@ -22,16 +28,32 @@ def fetch_news(state: GraphState) -> dict:
             parsed = feedparser.parse(url)
             if parsed.get("status", 0) not in [200, 301, 302]:
                 continue
-            all_news += f"--- {source.upper()} ---\n"
-            for entry in parsed.entries[:10]:
+            
+            valid_entries_count = 0
+            source_news = f"--- {source.upper()} ---\n"
+            
+            for entry in parsed.entries[:15]: # Look at top 15 to ensure we get enough fresh ones
                 title   = entry.get("title",   "No Title")
                 link    = entry.get("link",    "No URL")
                 summary = entry.get("summary", "No Summary").split("<")[0].strip()
-                all_news += f"Title: {title}\nURL: {link}\nSummary: {summary}\n\n"
+                
+                # NEW: Skip if we already covered it!
+                if link in covered_urls:
+                    continue
+                    
+                source_news += f"Title: {title}\nURL: {link}\nSummary: {summary}\n\n"
+                valid_entries_count += 1
+                
+                if valid_entries_count >= 10: # Only keep 10 fresh ones per category
+                    break
+            
+            if valid_entries_count > 0:
+                all_news += source_news
+                
         except Exception as e:
             print(f"  ❌ Failed {source}: {e}")
 
-    print("\n--- RAW NEWS ---")
+    print("\n--- FRESH RAW NEWS ---")
     print(all_news)
     print("------------------\n")
     return {"raw_news": all_news}

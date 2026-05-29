@@ -18,15 +18,14 @@ from src.config import (
     BG_VIDEO_PATH
 )
 # NEW: Import the uploader
-from src.services.supabase_uploader import upload_video
-
+from src.services.supabase_uploader import upload_video, save_covered_news, cleanup_old_news
 def run_pipeline():
     print("="*50)
     print(" PHASE 1: Script & Audio Generation")
     print("="*50)
 
     # UNPACK BOTH RETURNS
-    script, social_data = run_script_pipeline()
+    script, social_data, target_url, curated_news = run_script_pipeline()
     run_tts_pipeline(script)
 
     print("\n✅ Phase 1 complete! Podcast saved to", OUTPUT_AUDIO_PATH)
@@ -52,6 +51,11 @@ def run_pipeline():
     timestamp = int(time.time())
     remote_filename = f"yapreport_{timestamp}.mp4"
     public_url = upload_video(OUTPUT_VIDEO_PATH, remote_filename)
+    if public_url and target_url:
+        # Extract just the headline from the curated_news block
+        headline = curated_news.split('\n')[0].replace('HEADLINE: ', '').strip()
+        save_covered_news(target_url, headline)
+        cleanup_old_news()
     
     # Return both the video URL and the SEO Social Metadata
     return public_url, social_data

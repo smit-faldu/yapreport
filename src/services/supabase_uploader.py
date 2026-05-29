@@ -2,6 +2,12 @@
 import os
 from supabase import create_client, Client
 from src.config import SUPABASE_URL, SUPABASE_KEY, SUPABASE_BUCKET
+import datetime
+
+def get_supabase_client():
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return None
+    return create_client(SUPABASE_URL, SUPABASE_KEY)
 
 def upload_video(file_path: str, filename: str) -> str:
     """Uploads the generated video to Supabase Storage and returns the public URL."""
@@ -31,3 +37,38 @@ def upload_video(file_path: str, filename: str) -> str:
     except Exception as e:
         print(f"❌ Failed to upload to Supabase: {e}")
         return None
+def get_covered_urls() -> set:
+    """Fetch all URLs that have already been covered."""
+    supabase = get_supabase_client()
+    if not supabase: return set()
+    try:
+        response = supabase.table("covered_news").select("url").execute()
+        return {row["url"] for row in response.data}
+    except Exception as e:
+        print(f"❌ Failed to fetch covered news: {e}")
+        return set()
+
+def save_covered_news(url: str, title: str):
+    """Save the successfully generated news to the database."""
+    supabase = get_supabase_client()
+    if not supabase or not url: return
+    try:
+        supabase.table("covered_news").insert({"url": url, "title": title}).execute()
+        print(f"✅ Stored news in DB to prevent repeats: {title[:50]}...")
+    except Exception as e:
+        print(f"❌ Failed to save covered news: {e}")
+
+def cleanup_old_news():
+    """Delete news records older than 2 days."""
+    supabase = get_supabase_client()
+    if not supabase: return
+    try:
+        # Calculate the timestamp for 2 days ago
+        two_days_ago = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=2)).isoformat()
+        
+        response = supabase.table("covered_news").delete().lt("created_at", two_days_ago).execute()
+        deleted_count = len(response.data) if response.data else 0
+        if deleted_count > 0:
+            print(f"🧹 Cleaned up {deleted_count} old news records (>2 days old).")
+    except Exception as e:
+        print(f"❌ Failed to cleanup old news: {e}")
