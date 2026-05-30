@@ -7,12 +7,44 @@ from src.models.schemas import GraphState, Script, CuratedStory, SocialMetadata
 from src.services.news_scraper import fetch_news, scrape_news_page
 from src.config import OUTPUT_SCRIPT_PATH, OUTPUT_SOCIAL_PATH, GEMINI_API_KEY_SECONDARY, GOOGLE_API_KEY
 
-creation_llm = ChatGoogleGenerativeAI(model="gemini-3.1-flash-lite", temperature=0.7, google_api_key=GOOGLE_API_KEY)
-distribution_llm = ChatGoogleGenerativeAI(model="gemini-3.1-flash-lite", temperature=0.7, google_api_key=GEMINI_API_KEY_SECONDARY)
+def get_robust_llm(schema):
+    """
+    Creates a highly resilient LLM by chaining fallbacks.
+    Prioritizes gemini-3.5-flash, falls back to 3.1-flash-lite.
+    Prioritizes GOOGLE_API_KEY, falls back to GEMINI_API_KEY_SECONDARY.
+    """
+    combinations = [
+        ("gemini-3.5-flash", GOOGLE_API_KEY),
+        ("gemini-3.5-flash", GEMINI_API_KEY_SECONDARY),
+        ("gemini-3.1-flash-lite", GOOGLE_API_KEY),
+        ("gemini-3.1-flash-lite", GEMINI_API_KEY_SECONDARY),
+    ]
+    
+    structured_llms = []
+    for model_name, api_key in combinations:
+        if api_key: # Only include if the API key actually exists in the .env
+            llm = ChatGoogleGenerativeAI(
+                model=model_name, 
+                temperature=0.7, 
+                google_api_key=api_key,
+                max_retries=1 # Keep low so it fails over quickly instead of hanging
+            )
+            structured_llms.append(llm.with_structured_output(schema))
+            
+    if not structured_llms:
+        raise ValueError("No valid API keys found! Check your .env file.")
+        
+    primary_llm = structured_llms[0]
+    fallback_llms = structured_llms[1:]
+    
+    # LangChain will automatically route to the next LLM in the list if the current one fails
+    if fallback_llms:
+        return primary_llm.with_fallbacks(fallback_llms)
+    return primary_llm
 
 def curate_news(state: GraphState) -> dict:
     print("🧠 Curating top story...")
-    curator_llm = creation_llm.with_structured_output(CuratedStory)
+    curator_llm = get_robust_llm(CuratedStory)
 
     prompt = ChatPromptTemplate.from_messages([
         ("system", "You are a news producer. Pick the ONE most explosive or dramatic story from today's raw news."),
@@ -33,7 +65,7 @@ def curate_news(state: GraphState) -> dict:
 
 def write_script(state: GraphState) -> dict:
     print("✍️  Writing hyper-engaging comedy roast script...")
-    structured_llm = creation_llm.with_structured_output(Script)
+    structured_llm = get_robust_llm(Script)
 
     first_speaker  = random.choice(["Trump", "Elon"])
     second_speaker = "Elon" if first_speaker == "Trump" else "Trump"
@@ -135,7 +167,7 @@ RAW SCRAPED ARTICLE TEXT:
 
 def review_script(state: GraphState) -> dict:
     print("🕵️‍♂️ Review Agent: Polishing script for maximum retention & humor...")
-    structured_llm = distribution_llm.with_structured_output(Script)
+    structured_llm = get_robust_llm(Script)
 
     prompt = ChatPromptTemplate.from_messages([
         ("system", """You are a master viral content reviewer. Your job is to double-check a generated short-form video script featuring Donald Trump and Elon Musk.
@@ -165,7 +197,7 @@ def review_script(state: GraphState) -> dict:
 # --- NEW AGENT 2: Social Media SEO Writer ---
 def write_social_copy(state: GraphState) -> dict:
     print("📱 Social Agent: Generating Instagram/Facebook caption, YouTube title, and YouTube description...")
-    structured_llm = distribution_llm.with_structured_output(SocialMetadata)
+    structured_llm = get_robust_llm(SocialMetadata)
 
     prompt = ChatPromptTemplate.from_messages([
         ("system", """You are a top-tier social media growth hacker and SEO expert.
