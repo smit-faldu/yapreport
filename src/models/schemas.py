@@ -1,4 +1,4 @@
-from typing import TypedDict, List
+from typing import TypedDict, List, Optional
 from pydantic import BaseModel, Field
 
 class GraphState(TypedDict):
@@ -28,3 +28,4 @@ class SocialMetadata(BaseModel):
     universal_caption: str = Field(description="A medium-length, SEO-driven caption with hashtags for Instagram and Facebook Reels only.")
     youtube_title: str = Field(description="A short, punchy, SEO-optimized title for YouTube Shorts. Must be under 70 characters and contain high-volume keywords.")
     youtube_description: str = Field(description="A longer, highly SEO-optimized description specifically for the YouTube Shorts description box.")
+    tags: List[str] = Field(description="A list of 5 to 10 highly relevant SEO tags (plain strings, no # prefix) for the video. E.g. ['trump news', 'elon musk', 'yap report'].")

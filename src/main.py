@@ -54,7 +54,7 @@ def run_pipeline():
     if public_url and target_url:
         # Extract just the headline from the curated_news block
         headline = curated_news.split('\n')[0].replace('HEADLINE: ', '').strip()
-        save_covered_news(target_url, headline)
+        save_covered_news(target_url, headline, public_url, social_data)
         cleanup_old_news()
     
     # Return both the video URL and the SEO Social Metadata

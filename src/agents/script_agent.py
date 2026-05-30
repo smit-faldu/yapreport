@@ -7,8 +7,8 @@ from src.models.schemas import GraphState, Script, CuratedStory, SocialMetadata
 from src.services.news_scraper import fetch_news, scrape_news_page
 from src.config import OUTPUT_SCRIPT_PATH, OUTPUT_SOCIAL_PATH, GEMINI_API_KEY_SECONDARY, GOOGLE_API_KEY
 
-creation_llm = ChatGoogleGenerativeAI(model="gemini-3.5-flash", temperature=0.7, google_api_key=GOOGLE_API_KEY)
-distribution_llm = ChatGoogleGenerativeAI(model="gemini-3.5-flash", temperature=0.7, google_api_key=GEMINI_API_KEY_SECONDARY)
+creation_llm = ChatGoogleGenerativeAI(model="gemini-3.1-flash-lite", temperature=0.7, google_api_key=GOOGLE_API_KEY)
+distribution_llm = ChatGoogleGenerativeAI(model="gemini-3.1-flash-lite", temperature=0.7, google_api_key=GEMINI_API_KEY_SECONDARY)
 
 def curate_news(state: GraphState) -> dict:
     print("🧠 Curating top story...")
@@ -190,6 +190,11 @@ def write_social_copy(state: GraphState) -> dict:
            - Length: A solid, detailed paragraph or two.
            - SEO Strategy: Write an extremely SEO-rich description that expands on the news topic using long-tail keywords to capture YouTube search intent.
            - Rule: Do NOT make it look like a list of tags. It must read like a natural, engaging summary of the topic while acting as algorithm bait.
+           
+        4. Tags (For all platforms):
+           - Generate a list of 5 to 10 highly relevant SEO tags as plain lowercase strings (NO # symbol, just the words).
+           - These should be high-volume search terms related to the news topic, the characters (Trump, Elon), and the show (Yap Report).
+           - Example format: ["trump news today", "elon musk", "yap report", "political satire", "news comedy"]
         """),
         ("human", "FINAL SCRIPT:\n{final_script}\n\nBASED ON NEWS:\n{curated_news}")
     ])
@@ -199,6 +204,14 @@ def write_social_copy(state: GraphState) -> dict:
         "final_script": state['final_script'],
         "curated_news": state['curated_news']
     })
+
+    # Replace " with \" in string fields to prevent downstream JSON parsing issues in n8n
+    if response.universal_caption:
+        response.universal_caption = response.universal_caption.replace('"', '\\"')
+    if response.youtube_title:
+        response.youtube_title = response.youtube_title.replace('"', '\\"')
+    if response.youtube_description:
+        response.youtube_description = response.youtube_description.replace('"', '\\"')
 
     return {"social_content": response.model_dump_json(indent=2)}
 
