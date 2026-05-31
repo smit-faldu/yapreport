@@ -1,5 +1,7 @@
 # 🎙️ Yap Report: Automated Comedic News Short Generator 🤖📺
 
+[![Instagram](https://img.shields.io/badge/Instagram-E4405F?style=for-the-badge&logo=instagram&logoColor=white)](https://www.instagram.com/yapreport/)
+[![YouTube](https://img.shields.io/badge/YouTube-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://www.youtube.com/@Yap_report)
 [![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com)
 [![LangGraph](https://img.shields.io/badge/LangGraph-2C3E50?style=for-the-badge&logo=langchain)](https://github.com/langchain-ai/langgraph)
 [![OmniVoice](https://img.shields.io/badge/OmniVoice-TTS-FF6B6B?style=for-the-badge)](https://github.com/k2-fsa/OmniVoice)
@@ -10,6 +12,14 @@
 **Yap Report** is an advanced, fully-automated media production pipeline that turns standard RSS daily headlines into high-octane, brainrot-infused, vertical short-form videos (TikTok/Reels/Shorts). The video features a dynamic, highly authentic satirical verbal roast battle between custom AI voice clones of **Donald Trump** and **Elon Musk** commenting on the news. 
 
 Every single step—from daily news curation, webpage content scraping, comedic dialogue scripting, multi-speaker voice synthesis, GPU-accelerated word-level subtitle alignment, dynamic video motion overlays, and multi-platform SEO caption generation—is completely automated and orchestrated via a structured **LangGraph** multi-agent state network.
+
+---
+
+## 📲 Follow the Show
+
+Check out the automatically generated and posted videos on our official channels:
+*   📸 **Instagram Reels:** [@yapreport](https://www.instagram.com/yapreport/)
+*   🎥 **YouTube Shorts:** [@Yap_report](https://www.youtube.com/@Yap_report)
 
 ---
 
