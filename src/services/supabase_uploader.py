@@ -48,6 +48,17 @@ def get_covered_urls() -> set:
         print(f"❌ Failed to fetch covered news: {e}")
         return set()
 
+def get_covered_titles() -> set:
+    """Fetch all titles that have already been covered."""
+    supabase = get_supabase_client()
+    if not supabase: return set()
+    try:
+        response = supabase.table("covered_news").select("title").execute()
+        return {row["title"] for row in response.data}
+    except Exception as e:
+        print(f"❌ Failed to fetch covered news: {e}")
+        return set()
+
 def save_covered_news(url: str, title: str, video_link: str = None, social_metadata: dict = None):
     """Save the successfully generated news to the database."""
     supabase = get_supabase_client()

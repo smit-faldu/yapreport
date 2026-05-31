@@ -47,12 +47,23 @@ def curate_news(state: GraphState) -> dict:
     curator_llm = get_robust_llm(CuratedStory)
 
     prompt = ChatPromptTemplate.from_messages([
-        ("system", "You are a news producer. Pick the ONE most explosive or dramatic story from today's raw news."),
+        ("system", """You are a news producer. Pick the ONE most explosive or dramatic story from today's raw news.
+        
+        CRITICAL RULE - DO NOT REPEAT NEWS:
+        You must completely ignore any stories that are about, or are simply updates to, the following recently covered topics:
+        {past_topics}
+        
+        Pick a completely fresh topic that does not overlap with the above list."""),
         ("human", "Raw News:\n{raw_news}\n\nTask: Extract the headline, who is involved, exactly what happened, and importantly, grab the exact URL associated with the story.")
     ])
     
     chain = prompt | curator_llm
-    curated_obj = chain.invoke({"raw_news": state['raw_news']})
+    
+    # We pass the previously covered titles into the prompt
+    curated_obj = chain.invoke({
+        "raw_news": state['raw_news'],
+        "past_topics": state.get('past_topics', 'No recent topics provided.') 
+    })
     
     curated_text = f"HEADLINE: {curated_obj.headline}\nWHO: {curated_obj.who}\nWHAT: {curated_obj.what_happened}"
 

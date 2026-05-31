@@ -2,13 +2,15 @@ import feedparser
 import requests
 from bs4 import BeautifulSoup
 from src.models.schemas import GraphState
-from src.services.supabase_uploader import get_covered_urls # NEW IMPORT
+from src.services.supabase_uploader import get_covered_urls, get_covered_titles
 
 def fetch_news(state: GraphState) -> dict:
     print("📰 Fetching global headlines...")
     
     # NEW: Fetch already covered URLs
     covered_urls = get_covered_urls()
+    covered_titles_list = get_covered_titles() 
+    past_topics_str = "\n".join([f"- {title}" for title in covered_titles_list]) if covered_titles_list else "None"
     if covered_urls:
         print(f"🛡️  Found {len(covered_urls)} previously covered articles. Filtering them out...")
 

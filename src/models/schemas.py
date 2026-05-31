@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 
 class GraphState(TypedDict):
     raw_news:      str
+    past_topics:   str
     curated_news:  str
     target_url:    str
     scraped_text:  str
