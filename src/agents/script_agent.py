@@ -113,7 +113,7 @@ You must strictly follow this exact narrative pace across EXACTLY 9 lines:
 - Line 6-8 (The Billionaire Perspective): Both characters mock how this impacts the future of humanity or their own massive bank accounts.
 - Line 9 (The Unhinged CTA).
 
-Target length: 12 to 22 words per line. Keep it punchy!
+Target length: 12 to 20 words per line. Keep it punchy!
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 RULE 3 — STRATEGIC AUDIO TAG PLACEMENT & EMOTION CONTROL
@@ -123,14 +123,9 @@ To make the AI voices sound hyper-realistic and engaging, you must use the follo
 SUPPORTED TAGS ONLY — DO NOT USE ANY OTHER TAGS:
 
 1. THE HUMAN TOUCH (Vocal fillers for organic realism & pacing):
-   [laughter] [sigh] [confirmation-en] [dissatisfaction-hnn]
+   [laughter] [sigh]
    -> USAGE: Embed these INSIDE the middle of sentences where a human would naturally breathe, hesitate, or react emotionally.
    -> EXAMPLE: Trump: "They told me, [sigh] they said it was a brilliant move, but frankly [laughter] it's the lowest energy thing I've ever seen."
-
-2. MICRO-REACTIONS (Punctuate shocking, confusing, or stupid moments):
-   [question-en] [question-ah] [question-oh] [question-ei] [question-yi] [surprise-ah] [surprise-oh] [surprise-yo]
-   -> USAGE: Place these at the END of a sentence, or use them as a standalone interruption right after the other speaker drops a crazy fact.
-   -> EXAMPLE: Elon: "The CEO literally fired himself. [surprise-oh]"
 
 PLACEMENT RULES (CRITICAL):
 - MAXIMUM EFFICIENCY: Use 1, maybe 2 tags per line.
@@ -173,9 +168,9 @@ def review_script(state: GraphState) -> dict:
         ("system", """You are a master viral content reviewer. Your job is to double-check a generated short-form video script featuring Donald Trump and Elon Musk.
         
         EVALUATION CRITERIA:
-        1. Does the first line grab attention instantly?
+        1. Does the first 2 line grab attention instantly?
         2. Is the comedy punchy and easy for a general audience to understand?
-        3. Are the audio tags (like [laughter], [surprise-oh]) used correctly without breaking the flow?
+        3. Are the audio tags (like [laughter]) used correctly without breaking the flow?
         4. Is it exactly 9 lines of alternating speakers?
         
         ACTION: 
@@ -195,8 +190,9 @@ def review_script(state: GraphState) -> dict:
 
 
 # --- NEW AGENT 2: Social Media SEO Writer ---
+# --- NEW AGENT 2: Social Media SEO Writer ---
 def write_social_copy(state: GraphState) -> dict:
-    print("📱 Social Agent: Generating Instagram/Facebook caption, YouTube title, and YouTube description...")
+    print("📱 Social Agent: Generating Instagram, Facebook, and YouTube copy...")
     structured_llm = get_robust_llm(SocialMetadata)
 
     prompt = ChatPromptTemplate.from_messages([
@@ -205,25 +201,31 @@ def write_social_copy(state: GraphState) -> dict:
         Based on the finalized video script and the core news topic, generate the posting metadata.
         
         REQUIREMENTS:
-        1. Universal Caption (Strictly for Instagram and Facebook Reels ONLY):
-           - Length: Medium length (around 1 to 3 sentences). Not too short, not a massive essay.
-           - Structure: Start with an undeniable hook, add a bit of context/humor related to the script, and end with a call to action (e.g., "What do you think?").
+        1. Instagram Caption:
+           - Length: Medium length. No character restriction.
+           - Structure: Start with an undeniable hook, add a bit of context/humor related to the script, and end with a call to action.
            - SEO: Weave in high-volume search terms naturally.
-           - Hashtags: Include 5 to 8 highly targeted, trending hashtags at the very bottom.
+           - Hashtags: Include 5 to 8 highly targeted, trending hashtags at the very bottom. You MUST include #reel, #reels, and #news.
            
-        2. YouTube Title (Strictly for YouTube Shorts ONLY):
+        2. Facebook Caption:
+           - Length: HARD LIMIT of 255 characters total (this includes the text AND all hashtags). 
+           - Structure: Keep it punchy and short to strictly fit the limit.
+           - Hashtags: You MUST include #reel, #reels, and #news within the 255 character limit.
+
+        3. YouTube Title (Strictly for YouTube Shorts ONLY):
            - Length: HARD LIMIT of 70 characters. Shorter is better.
            - Format: Punchy, curiosity-driven, and front-loaded with the most important keyword or name (e.g., "Trump & Elon ROAST...").
            - SEO: Use high-volume search keywords people would actually type on YouTube.
            - Tone: Clickbait-y but not misleading. Matches the comedic/satirical tone of the show.
            - Do NOT use hashtags in the title. Just the title text itself.
            
-        3. YouTube Description (Strictly for YouTube):
+        4. YouTube Description (Strictly for YouTube):
            - Length: A solid, detailed paragraph or two.
            - SEO Strategy: Write an extremely SEO-rich description that expands on the news topic using long-tail keywords to capture YouTube search intent.
            - Rule: Do NOT make it look like a list of tags. It must read like a natural, engaging summary of the topic while acting as algorithm bait.
+           - Hashtags: Add relevant hashtags at the bottom of the description.
            
-        4. Tags (For all platforms):
+        5. Tags (For all platforms):
            - Generate a list of 5 to 10 highly relevant SEO tags as plain lowercase strings (NO # symbol, just the words).
            - These should be high-volume search terms related to the news topic, the characters (Trump, Elon), and the show (Yap Report).
            - Example format: ["trump news today", "elon musk", "yap report", "political satire", "news comedy"]
@@ -237,9 +239,27 @@ def write_social_copy(state: GraphState) -> dict:
         "curated_news": state['curated_news']
     })
 
+    # NEW: Strictly enforce Facebook 255 character limit while keeping mandatory hashtags
+    if response.facebook_caption and len(response.facebook_caption) > 255:
+        required_tags = " #reel #reels #news"
+        
+        # Strip existing tags temporarily so we don't duplicate them or miscalculate text length
+        clean_text = response.facebook_caption.replace("#reels", "").replace("#reel", "").replace("#news", "").strip()
+        
+        # Calculate max text space: 255 - length of our required tags - 3 spaces for an ellipsis "..."
+        max_text_len = 255 - len(required_tags) - 3
+        
+        if len(clean_text) > max_text_len:
+            clean_text = clean_text[:max_text_len].strip() + "..."
+            
+        # Re-attach the mandatory hashtags safely under the limit
+        response.facebook_caption = clean_text + required_tags
+
     # Replace " with \" in string fields to prevent downstream JSON parsing issues in n8n
-    if response.universal_caption:
-        response.universal_caption = response.universal_caption.replace('"', '\\"')
+    if response.instagram_caption:
+        response.instagram_caption = response.instagram_caption.replace('"', '\\"')
+    if response.facebook_caption:
+        response.facebook_caption = response.facebook_caption.replace('"', '\\"')
     if response.youtube_title:
         response.youtube_title = response.youtube_title.replace('"', '\\"')
     if response.youtube_description:

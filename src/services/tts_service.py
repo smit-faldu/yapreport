@@ -111,16 +111,16 @@ def run_tts_pipeline(script: Script):
     print(f"\n🎉 Podcast saved → {OUTPUT_AUDIO_PATH}  ({duration:.1f}s total)")
 
     # ── SPEED-UP LOGIC ───────────────────────────────────────────────────────
-    print("\n⏩ Speeding up audio to 1.2x using SoX...")
+    print("\n⏩ Speeding up audio to 1.3x using SoX...")
     temp_output = "temp_podcast_1_2x.wav"
     try:
         # Use 'tempo' to speed up without changing the pitch of the voices
-        subprocess.run(["sox", OUTPUT_AUDIO_PATH, temp_output, "tempo", "1.2"], check=True)
-
+        subprocess.run(["sox", OUTPUT_AUDIO_PATH, temp_output, "tempo", "1.3"], check=True)
+    
         # Replace original file with the sped-up version
         os.replace(temp_output, OUTPUT_AUDIO_PATH)
 
-        print(f"✅ Audio successfully sped up to 1.2x! Overwrote {OUTPUT_AUDIO_PATH}")
+        print(f"✅ Audio successfully sped up to 1.3x! Overwrote {OUTPUT_AUDIO_PATH}")
     except subprocess.CalledProcessError as e:
         print(f"❌ Failed to speed up audio using SoX: {e}")
     except Exception as e:

@@ -24,8 +24,10 @@ class CuratedStory(BaseModel):
     url: str = Field(description="The exact URL of the story from the raw news")
 
 # NEW: Schema for the Social Media Agent
+# NEW: Schema for the Social Media Agent
 class SocialMetadata(BaseModel):
-    universal_caption: str = Field(description="A medium-length, SEO-driven caption with hashtags for Instagram and Facebook Reels only.")
+    instagram_caption: str = Field(description="A medium-length, SEO-driven caption for Instagram including hashtags. No character limit. Must include #reel, #reels, and #news.")
+    facebook_caption: str = Field(description="A short caption for Facebook. The ENTIRE string including text and hashtags MUST strictly be 255 characters or less. Must include #reel, #reels, and #news.")
     youtube_title: str = Field(description="A short, punchy, SEO-optimized title for YouTube Shorts. Must be under 70 characters and contain high-volume keywords.")
-    youtube_description: str = Field(description="A longer, highly SEO-optimized description specifically for the YouTube Shorts description box.")
+    youtube_description: str = Field(description="A longer, highly SEO-optimized description specifically for the YouTube Shorts description box, including hashtags at the end.")
     tags: List[str] = Field(description="A list of 5 to 10 highly relevant SEO tags (plain strings, no # prefix) for the video. E.g. ['trump news', 'elon musk', 'yap report'].")
