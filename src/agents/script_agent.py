@@ -153,7 +153,7 @@ Format: "Follow Yap Report OR [Insane threat/bizarre cosmic consequence]."
 RULE 5 — STRATEGIC VISUAL B-ROLL (IMAGE QUERIES)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 You can provide an `image_query` to search DuckDuckGo for an image to display during a line.
-- DO NOT put an image on every line. It ruins the pacing. Only use images when a visual punchline or context will massively boost retention (aim for 2 to 4 images total across the script).
+- DO NOT put an image on every line. It ruins the pacing. Only use images when a visual punchline or context will massively boost retention (aim for 4 to 7 images total across the script).
 - If no image is needed, set `image_query` to null/None.
 - LINE 9 (THE CTA) MUST ALWAYS HAVE `image_query` SET TO NULL.
 - Keep the query extremely short (2-4 words) and highly searchable. 
@@ -193,7 +193,7 @@ def review_script(state: GraphState) -> dict:
         2. Is the comedy punchy and easy for a general audience to understand?
         3. Are the audio tags (like [laughter]) used correctly without breaking the flow?
         4. Is it exactly 9 lines of alternating speakers?
-        5. Are the `image_query` fields used strategically? (They should NOT be on every line, they should pop up only for maximum comedic/visual impact, and Line 9 MUST be null/None).
+        5. Are the `image_query` fields used strategically? (They should NOT be on every line, they should pop up only for maximum comedic/visual impact or its important to visualy present news, and Line 9 MUST be null/None).
         
         ACTION: 
         If the script is already top-tier, return it exactly as is. 
