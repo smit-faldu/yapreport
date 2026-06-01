@@ -112,21 +112,29 @@ def check_nvenc_support():
     except Exception:
         return False
 
-def compile_video(timeline, duration, bg_video_path=None, audio_path=None, output_path=None):
+def compile_video(timeline, duration, image_paths=None, bg_video_path=None, audio_path=None, output_path=None):
     if bg_video_path is None: bg_video_path = BG_VIDEO_PATH
     if audio_path is None: audio_path = OUTPUT_AUDIO_PATH
     if output_path is None: output_path = OUTPUT_VIDEO_PATH
     
-    print("🎬 Rendering video with Dynamic Pop-Up Animations...")
+    print("🎬 Rendering video with Dynamic Pop-Up Animations & B-Roll...")
     # Ensure required fonts are available for the ASS subtitles filter
     ensure_font()
     
+    # 0. NEW: Safely match image paths to the timeline blocks
+    for i, t in enumerate(timeline):
+        if image_paths and i < len(image_paths):
+            path = image_paths[i]
+            # PREVENT CRASHES: Ensure it's not a fake LLM string like "null" or "None"
+            if path and str(path).strip().lower() not in ['none', 'null', 'na', 'n/a', '']:
+                t["image"] = path
+
     # 1. Helper to generate the enable condition (when they are visible)
     def get_enable_expr(target):
         exprs = [f"between(t,{t['start']},{t['end']})" for t in timeline if t["speaker"] == target]
         return "+".join(exprs) if exprs else "0"
 
-    # 2. NEW Helper to generate the fast slide-up animation expression
+    # 2. Helper to generate the fast slide-up animation expression
     def get_y_expr(target, base_y, anim_duration=0.15, slide_distance=300):
         # Finds all speaking segments for this character
         segments = [t for t in timeline if t["speaker"] == target]
@@ -159,19 +167,42 @@ def compile_video(timeline, duration, bg_video_path=None, audio_path=None, outpu
     filter_str = (
         f"[0:v]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},setsar=1,eq=brightness=-0.15:saturation=1.2[bg]; "
         
-        # CHANGE HERE: Replace the second {PHOTO_SIZE} with -1 to preserve the aspect ratio!
         f"[2:v]scale={PHOTO_SIZE}:-1[trump]; "
         f"[3:v]scale={PHOTO_SIZE}:-1[elon]; "
         
         f"[bg][trump]overlay=x={PHOTO_X}:y='{trump_y_anim}':enable='{trump_enable}'[v1]; "
         f"[v1][elon]overlay=x={PHOTO_X}:y='{elon_y_anim}':enable='{elon_enable}'[v2]; "
-        f"[v2]subtitles=captions.ass:fontsdir='{fonts_dir_ffmpeg}'[outv]"
     )
+
+    # 4. NEW: Dynamically build inputs and overlay chains for B-Roll images
+    image_inputs = []
+    current_out = "v2" # Start chaining after the portraits (v2)
+    img_counter = 0    # Track the exact number of valid images added
+    
+    for t in timeline:
+        if t.get("image"):
+            # FFmpeg inputs are 0-indexed: 0=bg, 1=audio, 2=trump, 3=elon.
+            # So images start at index 4 + whatever image number we are currently on.
+            input_idx = 4 + img_counter
+            image_inputs.extend(["-i", t["image"]])
+            
+            next_out = f"v_img_{img_counter}"
+            
+            # Format the image, scale to 800w max
+            filter_str += f"[{input_idx}:v]scale=800:-1,format=rgba[img_{img_counter}]; "
+            
+            # Overlay it horizontally centered, Y=250 (above subtitles), enabled ONLY during this exact speaking turn
+            filter_str += f"[{current_out}][img_{img_counter}]overlay=x=(W-w)/2:y=250:enable='between(t,{t['start']},{t['end']})'[{next_out}]; "
+            
+            current_out = next_out # Pass the chain forward
+            img_counter += 1       # Increment our safe counter
+
+    # Finally, burn subtitles on the very last output node
+    filter_str += f"[{current_out}]subtitles=captions.ass:fontsdir='{fonts_dir_ffmpeg}'[outv]"
 
     has_nvenc = check_nvenc_support()
     if has_nvenc:
         print("💡 GPU encoding detected! Using NVIDIA NVENC Hardware Acceleration...")
-        # FIX: Changed from -cq 18 (massive files) to a capped 5Mbps bitrate
         encoder_args = ["-c:v", "h264_nvenc", "-preset", "p4", "-b:v", "5M", "-maxrate", "6M", "-bufsize", "10M"]
     else:
         print("⚠️ GPU encoding not supported. Using CPU fallback (libx264)...")
@@ -182,18 +213,25 @@ def compile_video(timeline, duration, bg_video_path=None, audio_path=None, outpu
         "-stream_loop", "-1", "-i", bg_video_path,
         "-i", audio_path,
         "-i", TRUMP_IMG,
-        "-i", ELON_IMG,
+        "-i", ELON_IMG
+    ]
+    
+    # Inject the dynamic image file inputs here
+    cmd.extend(image_inputs)
+    
+    # Add the rest of the arguments
+    cmd.extend([
         "-filter_complex", filter_str,
         "-map", "[outv]",
         "-map", "1:a",           
         "-t", str(duration),     
     ] + encoder_args + [
         "-c:a", "aac", 
-        "-ac", "2",               # FIX: Convert Mono to Stereo
-        "-b:a", "128k",           # FIX: Lower bitrate to prevent "Too many bits" AAC clamping error
-        "-shortest",              # FIX: Ensures absolute hard-cut when audio finishes
+        "-ac", "2",               # Convert Mono to Stereo
+        "-b:a", "128k",           # Lower bitrate to prevent "Too many bits" AAC clamping error
+        "-shortest",              # Ensures absolute hard-cut when audio finishes
         "-hide_banner", "-loglevel", "warning",
         output_path
-    ]
+    ])
     
     subprocess.run(cmd, check=True)

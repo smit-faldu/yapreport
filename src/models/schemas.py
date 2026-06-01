@@ -14,6 +14,7 @@ class GraphState(TypedDict):
 class DialogueLine(BaseModel):
     speaker: str = Field(description="Trump or Elon")
     line:    str = Field(description="The humorous dialogue line")
+    image_query: Optional[str] = Field(description="A highly specific 2-4 word DuckDuckGo image search query to visually represent the joke in this line. E.g., 'nasa roket crash', 'starit of hormoz', 'mark zuckerberg alien'. Use None if no image is needed.")
 
 class Script(BaseModel):
     dialogue: List[DialogueLine]

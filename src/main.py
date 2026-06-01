@@ -17,6 +17,7 @@ from src.config import (
     OUTPUT_SCRIPT_PATH, OUTPUT_AUDIO_PATH, OUTPUT_VIDEO_PATH,
     BG_VIDEO_PATH
 )
+from src.services.image_scraper import download_images_for_script
 # NEW: Import the uploader
 from src.services.supabase_uploader import upload_video, save_covered_news, cleanup_old_news
 def run_pipeline():
@@ -37,13 +38,13 @@ def run_pipeline():
 
     dialogue = json.load(open(OUTPUT_SCRIPT_PATH))["dialogue"]
     print(f"📄 {len(dialogue)} turns")
-
+    image_paths = download_images_for_script(script)
     duration = get_audio_duration(OUTPUT_AUDIO_PATH)
     words = transcribe(OUTPUT_AUDIO_PATH, dialogue)
     timeline = build_timeline(words)
 
     create_ass_subtitles(words, duration)
-    compile_video(timeline, duration, BG_VIDEO_PATH, OUTPUT_AUDIO_PATH, OUTPUT_VIDEO_PATH)
+    compile_video(timeline, duration,image_paths, BG_VIDEO_PATH, OUTPUT_AUDIO_PATH, OUTPUT_VIDEO_PATH)
 
     mb = os.path.getsize(OUTPUT_VIDEO_PATH) / 1024 / 1024
     print(f"\n🎉 Done! → {OUTPUT_VIDEO_PATH}  ({mb:.1f} MB)")
