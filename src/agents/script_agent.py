@@ -153,11 +153,12 @@ Format: "Follow Yap Report OR [Insane threat/bizarre cosmic consequence]."
 RULE 5 — STRATEGIC VISUAL B-ROLL (IMAGE QUERIES)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 You can provide an `image_query` to search DuckDuckGo for an image to display during a line.
-- DO NOT put an image on every line. It ruins the pacing. Only use images when a visual punchline or context will massively boost retention (aim for 4 to 7 images total across the script).
+- STRICT RULE: Queries MUST be for highly specific, concrete physical nouns (e.g., "NASA official logo high resolution", "SpaceX Falcon 9 rocket on launchpad photo", "Mark Zuckerberg court hearing news photo"). 
+- NEVER use abstract concepts, actions, or emotions (e.g., DO NOT search "financial crash", "sadness", or "winning").
+- Context is Key: Always append words like "logo", "news photo", "headshot", or "stock photo" to force accurate search engine results.
+- Pacing: DO NOT put an image on every line. Aim for 3 to 5 images total across the script to maintain pacing.
 - If no image is needed, set `image_query` to null/None.
 - LINE 9 (THE CTA) MUST ALWAYS HAVE `image_query` SET TO NULL.
-- Keep the query extremely short (2-4 words) and highly searchable. 
-- E.g., if the line mocks Elon's rocket exploding, the query should be "SpaceX explosion".
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 FORMATTING EXECUTABLES
@@ -193,7 +194,10 @@ def review_script(state: GraphState) -> dict:
         2. Is the comedy punchy and easy for a general audience to understand?
         3. Are the audio tags (like [laughter]) used correctly without breaking the flow?
         4. Is it exactly 9 lines of alternating speakers?
-        5. Are the `image_query` fields used strategically? (They should NOT be on every line, they should pop up only for maximum comedic/visual impact or its important to visualy present news, and Line 9 MUST be null/None).
+        5. Are the `image_query` fields foolproof? Check them strictly:
+           - They MUST be concrete, literal things (e.g., "White House press briefing photo").
+           - If a query is abstract, vague, or relies on a joke (e.g., "clown car", "money burning"), you MUST rewrite it into a literal news/stock photo query that represents the subject accurately.
+           - Ensure Line 9's image_query is null/None.
         
         ACTION: 
         If the script is already top-tier, return it exactly as is. 
@@ -210,8 +214,6 @@ def review_script(state: GraphState) -> dict:
 
     return {"final_script": response.model_dump_json(indent=2)}
 
-
-# --- NEW AGENT 2: Social Media SEO Writer ---
 # --- NEW AGENT 2: Social Media SEO Writer ---
 def write_social_copy(state: GraphState) -> dict:
     print("📱 Social Agent: Generating Instagram, Facebook, and YouTube copy...")

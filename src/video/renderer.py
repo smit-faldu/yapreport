@@ -121,7 +121,7 @@ def compile_video(timeline, duration, image_paths=None, bg_video_path=None, audi
     # Ensure required fonts are available for the ASS subtitles filter
     ensure_font()
     
-    # 0. NEW: Safely match image paths to the timeline blocks
+    # 0. Safely match image paths to the timeline blocks
     for i, t in enumerate(timeline):
         if image_paths and i < len(image_paths):
             path = image_paths[i]
@@ -163,21 +163,17 @@ def compile_video(timeline, duration, image_paths=None, bg_video_path=None, audi
 
     fonts_dir_ffmpeg = FONTS_DIR.replace('\\', '/')
     
-    # 3. Apply the dynamic 'y' expressions in the overlay filters
+    # 3. Base background and portrait scaling
     filter_str = (
         f"[0:v]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},setsar=1,eq=brightness=-0.15:saturation=1.2[bg]; "
-        
         f"[2:v]scale={PHOTO_SIZE}:-1[trump]; "
         f"[3:v]scale={PHOTO_SIZE}:-1[elon]; "
-        
-        f"[bg][trump]overlay=x={PHOTO_X}:y='{trump_y_anim}':enable='{trump_enable}'[v1]; "
-        f"[v1][elon]overlay=x={PHOTO_X}:y='{elon_y_anim}':enable='{elon_enable}'[v2]; "
     )
 
-    # 4. NEW: Dynamically build inputs and overlay chains for B-Roll images
+    # 4. OVERLAY B-ROLL IMAGES FIRST (on top of the background, below portraits)
     image_inputs = []
-    current_out = "v2" # Start chaining after the portraits (v2)
-    img_counter = 0    # Track the exact number of valid images added
+    current_bg = "bg" # Start with the base background
+    img_counter = 0    
     
     for t in timeline:
         if t.get("image"):
@@ -186,19 +182,23 @@ def compile_video(timeline, duration, image_paths=None, bg_video_path=None, audi
             input_idx = 4 + img_counter
             image_inputs.extend(["-i", t["image"]])
             
-            next_out = f"v_img_{img_counter}"
+            next_bg = f"bg_{img_counter}"
             
             # Format the image, scale to 800w max
             filter_str += f"[{input_idx}:v]scale=800:-1,format=rgba[img_{img_counter}]; "
             
-            # Overlay it horizontally centered, Y=250 (above subtitles), enabled ONLY during this exact speaking turn
-            filter_str += f"[{current_out}][img_{img_counter}]overlay=x=(W-w)/2:y=250:enable='between(t,{t['start']},{t['end']})'[{next_out}]; "
+            # Overlay it horizontally centered, Y=250, enabled ONLY during this exact speaking turn
+            filter_str += f"[{current_bg}][img_{img_counter}]overlay=x=(W-w)/2:y=250:enable='between(t,{t['start']},{t['end']})'[{next_bg}]; "
             
-            current_out = next_out # Pass the chain forward
-            img_counter += 1       # Increment our safe counter
+            current_bg = next_bg # Pass the chain forward
+            img_counter += 1       
 
-    # Finally, burn subtitles on the very last output node
-    filter_str += f"[{current_out}]subtitles=captions.ass:fontsdir='{fonts_dir_ffmpeg}'[outv]"
+    # 5. OVERLAY PORTRAITS ON TOP OF THE IMAGES
+    filter_str += f"[{current_bg}][trump]overlay=x={PHOTO_X}:y='{trump_y_anim}':enable='{trump_enable}'[v1]; "
+    filter_str += f"[v1][elon]overlay=x={PHOTO_X}:y='{elon_y_anim}':enable='{elon_enable}'[v2]; "
+
+    # 6. BURN SUBTITLES ON THE VERY TOP LAYER
+    filter_str += f"[v2]subtitles=captions.ass:fontsdir='{fonts_dir_ffmpeg}'[outv]"
 
     has_nvenc = check_nvenc_support()
     if has_nvenc:

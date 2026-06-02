@@ -11,7 +11,12 @@ def download_images_for_script(script, output_dir="assets/temp_images"):
 
     print("🖼️  Fetching B-Roll images from DuckDuckGo...")
     
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+    headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept": "image/webp,image/apng,image/*,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.5",
+    "Connection": "keep-alive"
+}
 
     for i, line in enumerate(script.dialogue):
         if not line.image_query or str(line.image_query).strip().lower() in ['none', 'null', 'na', 'n/a', '']:
@@ -23,7 +28,12 @@ def download_images_for_script(script, output_dir="assets/temp_images"):
             # Anti-ban delay
             time.sleep(2.5)
             # Fetch up to 3 results
-            results = list(DDGS().images(line.image_query, max_results=3, color="color"))
+            results = list(DDGS().images(
+                line.image_query, 
+                max_results=3, 
+                safesearch="on",      # 🚨 STRICTLY blocks adult/NSFW content
+                type_image="photo"    # Prioritizes real photos over random graphics/memes
+            ))
             
             if not results:
                 print(f"  ❌ No image found for {line.image_query}")

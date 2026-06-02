@@ -79,10 +79,10 @@ def cleanup_old_news():
     supabase = get_supabase_client()
     if not supabase: return
     try:
-        # Calculate the timestamp for 2 days ago
-        two_days_ago = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=2)).isoformat()
+        # Calculate the timestamp for 3 days ago
+        three_days_ago = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=3)).isoformat()
         
-        response = supabase.table("covered_news").delete().lt("created_at", two_days_ago).execute()
+        response = supabase.table("covered_news").delete().lt("created_at", three_days_ago).execute()
         deleted_count = len(response.data) if response.data else 0
         if deleted_count > 0:
             print(f"🧹 Cleaned up {deleted_count} old news records (>2 days old).")

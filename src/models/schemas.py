@@ -14,8 +14,7 @@ class GraphState(TypedDict):
 class DialogueLine(BaseModel):
     speaker: str = Field(description="Trump or Elon")
     line:    str = Field(description="The humorous dialogue line")
-    image_query: Optional[str] = Field(description="A highly specific 2-4 word DuckDuckGo image search query to visually represent the joke in this line. E.g., 'nasa roket crash', 'starit of hormoz', 'mark zuckerberg alien'. Use None if no image is needed.")
-
+    image_query: Optional[str] = Field(description="A highly specific 3-5 word DuckDuckGo image search query. DO NOT search for abstract concepts, reactions, or memes (like 'facepalm' or 'shocked'). Only search for concrete, REAL-WORLD nouns related to the news. ALWAYS append words like 'news photo', 'stock photo', or 'logo' to ensure professional results (e.g., 'NASA headquarters stock photo', 'strait of hormuz map', 'Mark Zuckerberg news photo'). Use None if no image is needed.")
 class Script(BaseModel):
     dialogue: List[DialogueLine]
 
