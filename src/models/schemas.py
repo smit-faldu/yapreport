@@ -19,6 +19,7 @@ class Script(BaseModel):
     dialogue: List[DialogueLine]
 
 class CuratedStory(BaseModel):
+    novelty_check: str = Field(description="Step 1: Compare your chosen story against the past_topics. Explain step-by-step why it is a completely different real-world event (not just a different headline for the same event). If it overlaps, you must pick a different story.")
     headline: str = Field(description="The exact headline")
     who: str = Field(description="Specific real names of people/organizations")
     what_happened: str = Field(description="Exactly what occurred")

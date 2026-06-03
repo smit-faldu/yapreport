@@ -10,7 +10,10 @@ def fetch_news(state: GraphState) -> dict:
     # NEW: Fetch already covered URLs
     covered_urls = get_covered_urls()
     covered_titles_list = get_covered_titles() 
+    
+    # Format the past topics clearly for the LLM
     past_topics_str = "\n".join([f"- {title}" for title in covered_titles_list]) if covered_titles_list else "None"
+    
     if covered_urls:
         print(f"🛡️  Found {len(covered_urls)} previously covered articles. Filtering them out...")
 
@@ -57,8 +60,12 @@ def fetch_news(state: GraphState) -> dict:
     print("\n--- FRESH RAW NEWS ---")
     print(all_news)
     print("------------------\n")
-    return {"raw_news": all_news}
-
+    
+    # IMPORTANT: Return past_topics so it enters the LangGraph state!
+    return {
+        "raw_news": all_news,
+        "past_topics": past_topics_str
+    }
 def scrape_news_page(state: GraphState) -> dict:
     url = state.get("target_url", "")
     print(f"🕸️ Scraping Webpage: {url}")

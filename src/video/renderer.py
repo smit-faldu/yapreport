@@ -175,31 +175,29 @@ def compile_video(timeline, duration, image_paths=None, bg_video_path=None, audi
     current_bg = "bg" # Start with the base background
     img_counter = 0    
     
+    image_inputs = []
+    current_bg = "bg" # Start with the base background
+    img_counter = 0    
+    
     for t in timeline:
         if t.get("image"):
-            # FFmpeg inputs are 0-indexed: 0=bg, 1=audio, 2=trump, 3=elon.
             input_idx = 4 + img_counter
-            image_inputs.extend(["-i", t["image"]])
+            
+            # ✅ FIX 1: Add "-loop", "1" so the image provides continuous frames!
+            image_inputs.extend(["-loop", "1", "-i", t["image"]])
             
             next_bg = f"bg_{img_counter}"
             
-            # Define timing for the animations
-            img_start = t['start']
-            img_end = t['end']
-            fade_d = 0.20 # 0.2 seconds fade and slide duration
+            # ✅ FIX 2: Use scale=800:-2 (instead of -1). This forces the height to be an even number, 
+            # preventing obscure "YUV420p odd dimension" crashes on certain GPUs.
+            filter_str += f"[{input_idx}:v]scale=800:-2,format=rgba[img_{img_counter}]; "
             
-            # Format the image, scale to 800w max, and apply FADE IN and FADE OUT to the alpha channel
-            filter_str += (
-                f"[{input_idx}:v]scale=800:-1,format=rgba,"
-                f"fade=t=in:st={img_start}:d={fade_d}:alpha=1,"
-                f"fade=t=out:st={img_end-fade_d}:d={fade_d}:alpha=1[img_{img_counter}]; "
-            )
+            # ✅ FIX 3: The slide-up animation! 
+            # Starts 100 pixels lower and slides up to Y=250 over 0.2 seconds.
+            img_y_anim = f"250+max(0,100*(1-(t-{t['start']})/0.2))"
             
-            # SLIDE DOWN ANIMATION MATH: Starts 100 pixels higher and drops to Y=250 over 'fade_d' seconds
-            y_anim = f"250-max(0,100*(1-(t-{img_start})/{fade_d}))"
-            
-            # Overlay it horizontally centered, with dynamic Y animation and exact timing
-            filter_str += f"[{current_bg}][img_{img_counter}]overlay=x=(W-w)/2:y='{y_anim}':enable='between(t,{img_start},{img_end})'[{next_bg}]; "
+            # Overlay it horizontally centered, with the dynamic Y animation
+            filter_str += f"[{current_bg}][img_{img_counter}]overlay=x=(W-w)/2:y='{img_y_anim}':enable='between(t,{t['start']},{t['end']})'[{next_bg}]; "
             
             current_bg = next_bg # Pass the chain forward
             img_counter += 1       
@@ -223,8 +221,8 @@ def compile_video(timeline, duration, image_paths=None, bg_video_path=None, audi
         "ffmpeg", "-y",
         "-stream_loop", "-1", "-i", bg_video_path,
         "-i", audio_path,
-        "-i", TRUMP_IMG,
-        "-i", ELON_IMG
+        "-loop", "1", "-i", TRUMP_IMG,  # Added -loop 1 here
+        "-loop", "1", "-i", ELON_IMG    # Added -loop 1 here
     ]
     
     # Inject the dynamic image file inputs here
