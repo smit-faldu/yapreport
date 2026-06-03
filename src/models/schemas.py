@@ -10,7 +10,9 @@ class GraphState(TypedDict):
     draft_script:  str  # Raw script from write_agent (before review)
     final_script:  str  # Polished script after review_agent
     social_content: str  # To hold the generated social media copy
-
+    critique_notes: List[str]
+    review_count:   int
+    
 class DialogueLine(BaseModel):
     speaker: str = Field(description="Trump or Elon")
     line:    str = Field(description="The humorous dialogue line")
@@ -33,3 +35,7 @@ class SocialMetadata(BaseModel):
     youtube_title: str = Field(description="A short, punchy, SEO-optimized title for YouTube Shorts. Must be under 70 characters and contain high-volume keywords.")
     youtube_description: str = Field(description="A longer, highly SEO-optimized description specifically for the YouTube Shorts description box, including hashtags at the end.")
     tags: List[str] = Field(description="A list of 5 to 10 highly relevant SEO tags (plain strings, no # prefix) for the video. E.g. ['trump news', 'elon musk', 'yap report'].")
+    
+class ScriptReview(BaseModel):
+    approved: bool = Field(description="Set to True ONLY if the script completely passes all rules perfectly. False if any line requires optimization.")
+    critique: List[str] = Field(description="Step-by-step bullet points explaining exactly what rules were broken, which lines lack comedy, or where formatting failed.")

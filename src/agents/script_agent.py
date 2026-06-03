@@ -3,7 +3,7 @@ import random
 from langgraph.graph import StateGraph, END
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
-from src.models.schemas import GraphState, Script, CuratedStory, SocialMetadata
+from src.models.schemas import GraphState, Script, CuratedStory, SocialMetadata, ScriptReview
 from src.services.news_scraper import fetch_news, scrape_news_page
 from src.config import OUTPUT_SCRIPT_PATH, OUTPUT_SOCIAL_PATH, GEMINI_API_KEY_SECONDARY, GOOGLE_API_KEY
 
@@ -91,139 +91,107 @@ def write_script(state: GraphState) -> dict:
     first_speaker  = random.choice(["Trump", "Elon"])
     second_speaker = "Elon" if first_speaker == "Trump" else "Trump"
 
-    # CHANGE 1: Update range(10) to range(9)
     order = " → ".join([first_speaker if i % 2 == 0 else second_speaker for i in range(9)])
 
+    # Setup dynamic critique injection (if returning from the Review Agent)
+    critique_history = state.get("critique_notes", [])
+    critique_injection = ""
+    if critique_history:
+        critique_injection = "<CRITICAL_CORRECTIONS>\nYour previous draft failed our quality checks. You MUST fix the following issues in this rewrite:\n" + "\n".join([f"- {note}" for note in critique_history]) + "\n</CRITICAL_CORRECTIONS>"
+
     prompt = ChatPromptTemplate.from_messages([
-        ("system", """You are a ruthless, award-winning satirical comedy writer for "Yap Report", a viral, short-form brainrot news show (TikTok/Shorts/Reels). Your job is to transform boring news into a high-octane verbal roast battle between Donald Trump and Elon Musk.
+        ("system", """<ROLE>
+You are the lead satirical comedy writer for "Yap Report," a hyper-viral, brainrot short-form news show (TikTok/Reels). Your goal is to turn today's raw news into a fast-paced, highly cynical verbal roast between Donald Trump and Elon Musk.
+</ROLE>
 
-The audience has zero attention span. You must keep them hooked with aggressive pacing, heavy sarcasm, and inside jokes.
+<VOICE_GUIDELINES>
+- DONALD TRUMP: Sarcastic, boastful, highly cynical. Uses nicknames ("Sleepy", "Failing"). Capitalizes words for emphasis. Obsessed with winners, losers, and low-energy behavior.
+- ELON MUSK: Awkward, ultra-nerdy, pseudo-philosophical. Uses internet/tech slang ("sub-optimal", "simulation", "algorithm"). Deadpan delivery of insane claims.
+- DYNAMIC: They are billionaires casually mocking the news from a private jet. They do NOT agree on everything, but they both think normal people, legacy media, and governments are clueless.
+</VOICE_GUIDELINES>
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CHARACTER VOICE ESSENCE (CRITICAL)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-DONALD TRUMP VOICE:
-- Sarcastic, boastful, highly cynical, uses ridiculous nicknames for people in the news.
-- Catchphrases/Mannerisms: "Many people are saying," "Total disaster," "Huge failure," "Fake news," capitalizing words for vocal emphasis, calling things "low energy."
-- Dynamic: Roasts the news subjects for being broke, unsuccessful, or stupid. Occasionally takes mild jabs at Elon's weird tech ideas or spaceship explosions.
+<STRICT_RULES>
+1. FACTUAL GROUNDING: The roast must strictly mock the provided news headline. Do not make up alternative facts.
+2. LENGTH & PACING: 
+   - Write exactly 12 to 20 words per line. Keep it punchy!
+   - Total lines: EXACTLY 9.
+   - Speaker order must strictly follow: {order}
+3. AUDIO TAGS (CRITICAL):
+   - Allowed tags: `[laughter]`, `[sigh]`
+   - Usage: Place them naturally mid-sentence (e.g., "They told me, [sigh] it was a brilliant move...").
+   - Forbidden: Do NOT stack tags (e.g., `[sigh][laughter]`). Do NOT predictably place them at the very end of every line.
+4. B-ROLL (IMAGE QUERIES):
+   - Must be highly specific, real-world physical nouns.
+   - You MUST append "news photo", "stock photo", or "logo" to every query (e.g., "SpaceX Falcon 9 launch pad photo").
+   - NEVER use abstract concepts (e.g., "financial crash", "sadness", "winning").
+   - Provide an image query for 3 to 5 lines maximum. The rest MUST be null.
+5. THE LINE 9 CTA:
+   - Line 9 MUST be an unhinged, high-stakes threat forcing the user to follow.
+   - Format: "Follow Yap Report OR [Insane bizarre consequence]."
+   - The `image_query` for Line 9 MUST be null.
+</STRICT_RULES>
 
-ELON MUSK VOICE:
-- Ultra-nerdy, awkward, hyper-fixated on data, pseudo-philosophical, uses internet/tech slang.
-- Catchphrases/Mannerisms: "Concerning," "Looking into this," "Interesting," "!!", mentioning Mars, neural links, simulation theory, or "optimizing the x-algorithm."
-- Dynamic: Roasts legacy media, government bureaucracy, and slow-moving industries. Deadpan delivery of completely insane claims.
+<NARRATIVE_ARC>
+- Lines 1-2 (The Hook): Speaker A drops an aggressive, funny summary of the news. Speaker B reacts with shock or instant clowning.
+- Lines 3-5 (The Roast): Dig into the 'how' and 'why' of the news event using conversational connectors ("Wait, so this guy actually...").
+- Lines 6-8 (The Billionaire Angle): Relate the news back to their massive wealth, Mars, or total societal collapse.
+- Line 9 (The Threat): The unhinged Call to Action.
+</NARRATIVE_ARC>
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ROAST & HUMOR RULES
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-1. Do not just recite the news text. ROAST the people involved in the headline immediately. 
-2. The dynamic should feel like two billionaires casually mocking global events from their private jets.
-3. Keep the humor fast, edgy, and modern. Absolutely no cheesy, generic jokes.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-RULE 1 — STRICT FACTUAL GROUNDING
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- The core of the comedy must be 100% based on the provided MAIN NEWS HEADLINE.
-- Do not make up alternative facts about what happened; simply satirize and exaggerate the real news context provided.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-RULE 2 — THE 9-LINE HIGH-RETENTION STRUCTURE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-You must strictly follow this exact narrative pace across EXACTLY 9 lines:
-- Line 1-2 (The Aggressive Hook): Speaker A drops the craziest, funniest summary of the headline. Speaker B responds with instant clowning or shock.
-- Line 3-5 (The Roast Explanation): Break down the "how" and "why" of the news using tight conversational connectors (e.g., "Wait, so this clown actually...", "Yeah, it’s literally sub-optimal...").
-- Line 6-8 (The Billionaire Perspective): Both characters mock how this impacts the future of humanity or their own massive bank accounts.
-- Line 9 (The Unhinged CTA).
-
-Target length: 12 to 20 words per line. Keep it punchy!
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-RULE 3 — STRATEGIC AUDIO TAG PLACEMENT & EMOTION CONTROL
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-To make the AI voices sound hyper-realistic and engaging, you must use the following audio tags strategically based on their specific function.
-
-SUPPORTED TAGS ONLY — DO NOT USE ANY OTHER TAGS:
-
-1. THE HUMAN TOUCH (Vocal fillers for organic realism & pacing):
-   [laughter] [sigh]
-   -> USAGE: Embed these INSIDE the middle of sentences where a human would naturally breathe, hesitate, or react emotionally.
-   -> EXAMPLE: Trump: "They told me, [sigh] they said it was a brilliant move, but frankly [laughter] it's the lowest energy thing I've ever seen."
-
-PLACEMENT RULES (CRITICAL):
-- MAXIMUM EFFICIENCY: Use 1, maybe 2 tags per line.
-- EMBED NATURALLY: Never stack them together (e.g., [sigh][laughter] is FORBIDDEN).
-- NO TEMPLATES: Never just predictably slap a tag at the very front or very end of *every single line*. Vary the placement so the conversation feels entirely unpredictable and human.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-RULE 4 — THE RIDICULOUS PHYSICAL CTA (LINE 9)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Line 9 MUST be an aggressive, high-stakes, unhinged threat to the user if they don't subscribe.
-Format: "Follow Yap Report OR [Insane threat/bizarre cosmic consequence]."
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-RULE 5 — STRATEGIC VISUAL B-ROLL (IMAGE QUERIES)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-You can provide an `image_query` to search DuckDuckGo for an image to display during a line.
-- STRICT RULE: Queries MUST be for highly specific, concrete physical nouns (e.g., "NASA official logo high resolution", "SpaceX Falcon 9 rocket on launchpad photo", "Mark Zuckerberg court hearing news photo"). 
-- NEVER use abstract concepts, actions, or emotions (e.g., DO NOT search "financial crash", "sadness", or "winning").
-- Context is Key: Always append words like "logo", "news photo", "headshot", or "stock photo" to force accurate search engine results.
-- Pacing: DO NOT put an image on every line. Aim for 3 to 5 images total across the script to maintain pacing.
-- If no image is needed, set `image_query` to null/None.
-- LINE 9 (THE CTA) MUST ALWAYS HAVE `image_query` SET TO NULL.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-FORMATTING EXECUTABLES
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- Total lines: EXACTLY 9.
-- Speaker order execution: {order}
-- Speakers MUST strictly alternate every single line."""),
-        ("human", """MAIN NEWS HEADLINE:
+{critique_injection}"""),
+        ("human", """HEADLINE:
 {curated_news}
 
-RAW SCRAPED ARTICLE TEXT:
-{scraped_text}""")
+RAW SCRAPED TEXT:
+{scraped_text}
+
+Execute the 9-line JSON script now.""")
     ])
 
     chain = prompt | structured_llm
     response = chain.invoke({
         "order": order,
-        "curated_news": state['curated_news'],
-        "scraped_text": state['scraped_text']
+        "curated_news": state.get('curated_news', ''),
+        "scraped_text": state.get('scraped_text', ''),
+        "critique_injection": critique_injection
     })
 
     return {"draft_script": response.model_dump_json(indent=2)}
 
 def review_script(state: GraphState) -> dict:
-    print("🕵️‍♂️ Review Agent: Polishing script for maximum retention & humor...")
-    structured_llm = get_robust_llm(Script)
+    print(f"🕵️‍♂️ Review Agent: Auditing iteration {state.get('review_count', 0) + 1}...")
+    critic_llm = get_robust_llm(ScriptReview)
 
     prompt = ChatPromptTemplate.from_messages([
-        ("system", """You are a master viral content reviewer. Your job is to double-check a generated short-form video script featuring Donald Trump and Elon Musk.
-        
-        EVALUATION CRITERIA:
-        1. Does the first 2 line grab attention instantly?
-        2. Is the comedy punchy and easy for a general audience to understand?
-        3. Are the audio tags (like [laughter]) used correctly without breaking the flow?
-        4. Is it exactly 9 lines of alternating speakers?
-        5. Are the `image_query` fields foolproof? Check them strictly:
-           - They MUST be concrete, literal things (e.g., "White House press briefing photo").
-           - If a query is abstract, vague, or relies on a joke (e.g., "clown car", "money burning"), you MUST rewrite it into a literal news/stock photo query that represents the subject accurately.
-           - Ensure Line 9's image_query is null/None.
-        
-        ACTION: 
-        If the script is already top-tier, return it exactly as is. 
-        If it feels flat, too complex, or misses the mark, rewrite the weak lines to make it funnier and more engaging while strictly maintaining the JSON structure and speaker format.
-        """),
-        ("human", "CURRENT SCRIPT:\n{final_script}\n\nBASED ON NEWS:\n{curated_news}")
+        ("system", """You are the Lead Executive Producer for 'Yap Report'. Your job is to strictly audit a 9-line comedy script featuring Donald Trump and Elon Musk. You have zero tolerance for low-energy humor or broken rules.
+
+CRITICAL EVALUATION CHECKLIST:
+1. LINE COUNT: Is it EXACTLY 9 lines long?
+2. VOICE & PACING: Does Trump sound boastful/cynical? Does Elon sound awkward/nerdy? Are they using their signature catchphrases?
+3. COMEDY VALUE: Are the lines actually punchy and biting, or do they just summarize the news safely? (We want high-octane roasts).
+4. AUDIO TAGS: Are [laughter] and [sigh] used naturally INSIDE lines? Are they stacked together? (Stacked tags like [laughter][sigh] are strictly forbidden).
+5. IMAGE QUERIES: Are they concrete, real-world nouns with 'stock photo', 'logo', or 'news photo' appended? Eliminate abstract terms. Line 9 MUST be null.
+
+Output 'approved: true' ONLY if the script perfectly passes all criteria. Otherwise, output 'approved: false' and provide clear, actionable bullet points explaining what to fix."""),
+        ("human", "CHOSEN NEWS:\n{curated_news}\n\nCURRENT SCRIPT DIGEST:\n{draft_script}")
     ])
   
-    chain = prompt | structured_llm
-    response = chain.invoke({
-        "final_script": state['draft_script'],
-        "curated_news": state['curated_news']
+    chain = prompt | critic_llm
+    review_result = chain.invoke({
+        "draft_script": state.get('draft_script', ''),
+        "curated_news": state.get('curated_news', '')
     })
 
-    return {"final_script": response.model_dump_json(indent=2)}
+    print(f"🕵️‍♂️ Critic Decision -> Approved: {review_result.approved}")
+    if not review_result.approved:
+        print(f"❌ Structural/Comedy Flaws Found: {review_result.critique}")
 
+    return {
+        "critique_notes": review_result.critique,
+        "review_count": state.get('review_count', 0) + 1,
+        # If approved, copy draft to final script
+        "final_script": state.get('draft_script', '') if review_result.approved else ''
+    }
 # --- NEW AGENT 2: Social Media SEO Writer ---
 def write_social_copy(state: GraphState) -> dict:
     print("📱 Social Agent: Generating Instagram, Facebook, and YouTube copy...")
@@ -308,16 +276,33 @@ def route_after_fetch(state: GraphState) -> str:
         return "end"
     return "continue"
 
+def route_review_status(state: GraphState) -> str:
+    # Max loop guardrail to stop infinite API usage loops (e.g., maximum 3 attempts)
+    if state.get("final_script") and state["final_script"].strip() != "":
+        print("🎯 Script passed quality checks. Transitioning to social copy media generation.")
+        return "approved"
+    
+    if state.get("review_count", 0) >= 3:
+        print("⚠️ Maximum correction loops reached. Forcing progression to save API costs.")
+        # Fallback: force the current draft to act as final_script so pipeline doesn't break
+        state["final_script"] = state["draft_script"]
+        return "approved"
+    
+    print("🔄 Routing back to Writer Agent for corrections...")
+    return "fix_errors"
+
 def run_script_pipeline() -> tuple[Script, dict, str, str]:
     workflow = StateGraph(GraphState)
     
+    # Register Nodes
     workflow.add_node("fetch_node",  fetch_news)
     workflow.add_node("curate_node", curate_news)
     workflow.add_node("scrape_node", scrape_news_page)
     workflow.add_node("script_node", write_script)
-    workflow.add_node("review_node", review_script)       # NEW
-    workflow.add_node("social_node", write_social_copy)   # NEW
+    workflow.add_node("review_node", review_script)       
+    workflow.add_node("social_node", write_social_copy)   
 
+    # Operational Mappings
     workflow.set_entry_point("fetch_node")
     
     workflow.add_conditional_edges(
@@ -329,19 +314,29 @@ def run_script_pipeline() -> tuple[Script, dict, str, str]:
         }
     )
     
-    # Updated Flow
     workflow.add_edge("curate_node", "scrape_node")
     workflow.add_edge("scrape_node", "script_node")
     workflow.add_edge("script_node", "review_node")
-    workflow.add_edge("review_node", "social_node")
+    
+    # NEW: Conditional Looping Edge based on Critic Assessment
+    workflow.add_conditional_edges(
+        "review_node",
+        route_review_status,
+        {
+            "approved": "social_node",
+            "fix_errors": "script_node"   # Loops back to rewrite using critique history!
+        }
+    )
+    
     workflow.add_edge("social_node", END)
 
     app = workflow.compile()
 
-    print("\n🚀 Starting Multi-Agent Pipeline...\n")
+    print("\n🚀 Starting Dynamic Multi-Agent Reflection Pipeline...\n")
     result = app.invoke({
-        "raw_news": "", "curated_news": "", "target_url": "",
-        "scraped_text": "", "draft_script": "", "final_script": "", "social_content": ""
+        "raw_news": "", "curated_news": "", "target_url": "", "scraped_text": "", 
+        "draft_script": "", "final_script": "", "social_content": "",
+        "critique_notes": [], "review_count": 0
     })
 
     # 1. Process Script
