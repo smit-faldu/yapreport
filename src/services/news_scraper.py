@@ -16,7 +16,6 @@ def fetch_news(state: GraphState) -> dict:
 
     feeds = {
         "Geopolitics (BBC)":          "http://feeds.bbci.co.uk/news/world/rss.xml",
-        "Finance (Yahoo)":            "https://finance.yahoo.com/news/rss",
         "Tech (BBC)":                 "https://feeds.bbci.co.uk/news/technology/rss.xml",
         "Science & Environment(BBC)": "http://feeds.bbci.co.uk/news/science_and_environment/rss.xml",
         "Health (BBC)":               "https://feeds.bbci.co.uk/news/health/rss.xml",
@@ -68,18 +67,38 @@ def scrape_news_page(state: GraphState) -> dict:
         return {"scraped_text": "No additional details scraped."}
 
     try:
-        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        }
         response = requests.get(url, headers=headers, timeout=10)
+        
+        # Raise an exception if the response was an HTTP error (e.g., 404, 500)
+        response.raise_for_status()
 
         soup = BeautifulSoup(response.text, 'html.parser')
 
-        paragraphs = soup.find_all('p')
-        text = "\n".join([p.get_text() for p in paragraphs])
+        # --- NEW LOGIC: Target the <article> tag ---
+        article = soup.find('article')
+        
+        if article:
+            # If the <article> tag exists, only grab paragraphs inside it
+            paragraphs = article.find_all('p')
+        else:
+            # FALLBACK: If there's no <article> tag (e.g., live blog pages), grab all <p> tags
+            print("⚠️ No <article> tag found. Falling back to page-wide paragraphs.")
+            paragraphs = soup.find_all('p')
+        # -------------------------------------------
+
+        text = "\n".join([p.get_text().strip() for p in paragraphs if p.get_text().strip()])
 
         scraped_text = text[:4000]
         print(f"✅ Scraped {len(scraped_text)} characters.")
 
         return {"scraped_text": scraped_text}
+        
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Network/HTTP error during scraping: {e}")
+        return {"scraped_text": "Failed to scrape full story. Relying on summary."}
     except Exception as e:
         print(f"❌ Scraping failed: {e}")
         return {"scraped_text": "Failed to scrape full story. Relying on summary."}

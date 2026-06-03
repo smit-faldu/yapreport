@@ -178,17 +178,28 @@ def compile_video(timeline, duration, image_paths=None, bg_video_path=None, audi
     for t in timeline:
         if t.get("image"):
             # FFmpeg inputs are 0-indexed: 0=bg, 1=audio, 2=trump, 3=elon.
-            # So images start at index 4 + whatever image number we are currently on.
             input_idx = 4 + img_counter
             image_inputs.extend(["-i", t["image"]])
             
             next_bg = f"bg_{img_counter}"
             
-            # Format the image, scale to 800w max
-            filter_str += f"[{input_idx}:v]scale=800:-1,format=rgba[img_{img_counter}]; "
+            # Define timing for the animations
+            img_start = t['start']
+            img_end = t['end']
+            fade_d = 0.20 # 0.2 seconds fade and slide duration
             
-            # Overlay it horizontally centered, Y=250, enabled ONLY during this exact speaking turn
-            filter_str += f"[{current_bg}][img_{img_counter}]overlay=x=(W-w)/2:y=250:enable='between(t,{t['start']},{t['end']})'[{next_bg}]; "
+            # Format the image, scale to 800w max, and apply FADE IN and FADE OUT to the alpha channel
+            filter_str += (
+                f"[{input_idx}:v]scale=800:-1,format=rgba,"
+                f"fade=t=in:st={img_start}:d={fade_d}:alpha=1,"
+                f"fade=t=out:st={img_end-fade_d}:d={fade_d}:alpha=1[img_{img_counter}]; "
+            )
+            
+            # SLIDE DOWN ANIMATION MATH: Starts 100 pixels higher and drops to Y=250 over 'fade_d' seconds
+            y_anim = f"250-max(0,100*(1-(t-{img_start})/{fade_d}))"
+            
+            # Overlay it horizontally centered, with dynamic Y animation and exact timing
+            filter_str += f"[{current_bg}][img_{img_counter}]overlay=x=(W-w)/2:y='{y_anim}':enable='between(t,{img_start},{img_end})'[{next_bg}]; "
             
             current_bg = next_bg # Pass the chain forward
             img_counter += 1       

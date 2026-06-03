@@ -30,9 +30,10 @@ def download_images_for_script(script, output_dir="assets/temp_images"):
             # Fetch up to 3 results
             results = list(DDGS().images(
                 line.image_query, 
-                max_results=3, 
-                safesearch="on",      # 🚨 STRICTLY blocks adult/NSFW content
-                type_image="photo"    # Prioritizes real photos over random graphics/memes
+                max_results=5,          # Increased from 3 to 5 for better fallback options
+                safesearch="moderate",  # 'on' is too aggressive and returns weird science/clipart images
+                size="Large",           # Force high-resolution, skipping tiny weird icons
+                type_image="photo"
             ))
             
             if not results:
